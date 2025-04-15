@@ -16,17 +16,17 @@ public class Server {
         try {
             serverSocket = new ServerSocket(port);
             System.out.println("Awaiting for connections...");
-            clientSocket = serverSocket.accept();
-            System.out.println("Connection established!");
+            
+            while (true) {
+                clientSocket = serverSocket.accept();
+                System.out.println("Connection established!");
+    
+                ClientHandler clientHandler = new ClientHandler(clientSocket);
+                clientHandler.run();
+            }
 
-            out = new ObjectOutputStream(clientSocket.getOutputStream());
-            in = new ObjectInputStream(clientSocket.getInputStream());
-
-            String clientMessage = (String) in.readObject();
-
-            System.out.println("Client message: " + clientMessage);
         }
-        catch (IOException | ClassNotFoundException e) {
+        catch (IOException e) {
             System.out.println(e.getMessage());
         }
     }
