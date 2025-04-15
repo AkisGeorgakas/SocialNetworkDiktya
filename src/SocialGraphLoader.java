@@ -17,17 +17,23 @@ public class SocialGraphLoader {
 
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.trim().split(":");
-                String user = parts[0].trim();
-                List<String> follows = new ArrayList<>();
 
-                if (parts.length > 1 && !parts[1].trim().isEmpty()) {
-                    String[] followArray = parts[1].split(",");
-                    for (String f : followArray) {
-                        follows.add(f.trim());
+                if(parts.length >= 1) {
+                    String user = parts[0].trim();
+                    List<String> follows = new ArrayList<>();
+
+                    if (parts.length > 1 && !parts[1].trim().isEmpty()) {
+                        String[] followArray = parts[1].split(",");
+                        for (String f : followArray) {
+                            follows.add(f.trim());
+                        }
                     }
+    
+                    graph.put(user, follows);
                 }
-
-                graph.put(user, follows);
+                else {
+                    System.out.println("Empty line.");
+                }
             }
         }
     }
