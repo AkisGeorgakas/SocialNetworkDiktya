@@ -11,7 +11,7 @@ public class Server {
 
     public static void main(String[] args) {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Server listening on port " + PORT);
+            System.out.println("server.Server listening on port " + PORT);
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -25,7 +25,7 @@ public class Server {
             }
 
         } catch (IOException e) {
-            System.err.println("Server exception: " + e.getMessage());
+            System.err.println("server.Server exception: " + e.getMessage());
         }
     }
 }
