@@ -1,3 +1,5 @@
+package server;
+
 import java.net.*;
 import java.io.*;
 
@@ -22,7 +24,7 @@ public class Server {
                 System.out.println("Connection established!");
     
                 ClientHandler clientHandler = new ClientHandler(clientSocket);
-                clientHandler.run();
+                clientHandler.start();
             }
 
         }
