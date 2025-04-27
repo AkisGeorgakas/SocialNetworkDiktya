@@ -11,6 +11,8 @@ public class Client {
     private ObjectInputStream in;
     private String serverIP;
     private int serverPort;
+    private boolean flag = false;
+    private Scanner myObj = new Scanner(System.in);
 
     public Client(String ip, int port) {
         this.serverIP = ip;
@@ -27,49 +29,31 @@ public class Client {
             out.writeObject("Hello there!");
             out.flush();
 
-            Scanner myObj = new Scanner(System.in);
-
-            while(true) {
-                System.out.println("Type 1 or 2 to continue:\nLog In: 1\nSign Up: 2");
+            while(!flag) {
+                System.out.println("\n1) Log In\n2) Sign Up\n3) Exit");
                 String actionCode = myObj.nextLine();
-                while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2"))) {
+                while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3"))) {
                     System.out.println("Wrong Input");
-                    actionCode = myObj.nextLine();
+                    actionCode = myObj.nextLine();                    
                 }
+
                 out.writeObject(actionCode);
                 out.flush();
 
-                String userName = "";
-                String password = "";
                 switch (actionCode) {
                     case "1":
-                        System.out.println("Kalispera, pws sas lene parakalw?");
-                        userName = myObj.nextLine();
-
-                        System.out.println("Kai poios einai o kwdikos sas?");
-                        password = myObj.nextLine();
-
+                        login();
                         break;
                     case "2":
-                        System.out.println("Dhmiourghste ena Username");
-                        userName = myObj.nextLine();
-
-                        System.out.println("Dhmiourghste kai enan kwdiko");
-                        password = myObj.nextLine();
+                        signup();
+                        break;
+                    case "3":
+                        stop();
                         break;
                 }
-                out.writeObject(userName);
-                out.flush();
-                out.writeObject(password);
-                out.flush();
-                String response = (String) in.readObject();
-                if(response.equals("Success")){
-                    System.out.println("Mpravo sou");
-                    break;
-                }
             }
-            
-            
+            myObj.close();
+
         } catch (IOException e) {
             System.out.println(e.getMessage());
         } catch (ClassNotFoundException e) {
@@ -83,10 +67,47 @@ public class Client {
             in.close();
             out.close();
             connection.close();
+            flag = true;
 
             System.out.println("Connection closed");
         } catch (IOException e) {
             System.out.println(e.getMessage());
+        }
+    }
+
+    public void login() throws IOException, ClassNotFoundException {
+        System.out.println("Kalispera, pws sas lene parakalw?");
+        String userName = myObj.nextLine();
+
+        System.out.println("Kai poios einai o kwdikos sas?");
+        String password = myObj.nextLine();
+
+        out.writeObject(userName);
+        out.flush();
+        out.writeObject(password);
+        out.flush();
+
+        String response = (String) in.readObject();
+        if(response.equals("Success")){
+            System.out.println("Mpravo sou");
+        }
+    }
+
+    public void signup() throws IOException, ClassNotFoundException {
+        System.out.println("Dhmiourghste ena Username");
+        String userName = myObj.nextLine();
+
+        System.out.println("Dhmiourghste kai enan kwdiko");
+        String password = myObj.nextLine();
+
+        out.writeObject(userName);
+        out.flush();
+        out.writeObject(password);
+        out.flush();
+
+        String response = (String) in.readObject();
+        if(response.equals("Success")){
+            System.out.println("Mpravo sou");
         }
     }
     

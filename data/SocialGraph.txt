@@ -1,5 +1,5 @@
-alice:bob,charlie
-bob:charlie
-charlie:alice
-diana:alice,bob
-eric:
+9078 6534 9299
+6534 9299
+9299 9078
+8512 9078 6534
+5566

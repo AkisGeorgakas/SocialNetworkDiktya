@@ -8,12 +8,13 @@ public class ClientHandler extends Thread {
     private ObjectInputStream inStream;
     private ObjectOutputStream outStream;
     private UsersLoader usersLoader = new UsersLoader("../data/users.txt");
+    private boolean flag = false;
 
     public ClientHandler(Socket socket) throws IOException {
         this.clientSocket = socket;
     }
 
-    public void run() {        
+    public void run() {     
         try {
             outStream = new ObjectOutputStream(clientSocket.getOutputStream());
             inStream = new ObjectInputStream(clientSocket.getInputStream());
@@ -22,19 +23,27 @@ public class ClientHandler extends Thread {
 
             System.out.println("client.Client message: " + clientMessage);
 
-            String actionCode = (String) inStream.readObject();
+            while(!flag) {
+                    String actionCode = (String) inStream.readObject();
 
-            switch(actionCode) {
-                case "1":
-                    login();
-                    break;
-                case "2":
-                    signup();
-                    break;
-            }
+                    System.out.println("client.Client message: " + actionCode);
+
+                    switch(actionCode) {
+                        case "1":
+                            login();
+                            break;
+                        case "2":
+                            signup();
+                            break;
+                        case "3":
+                            flag = true;
+                            break;
+                    }
+                }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
+        
     }
 
     private void login() throws IOException, ClassNotFoundException {
@@ -48,9 +57,6 @@ public class ClientHandler extends Thread {
             outStream.writeObject("Failed");
             outStream.flush();
         }
-
-
-
     }
 
     private void signup() throws IOException, ClassNotFoundException {
@@ -62,7 +68,7 @@ public class ClientHandler extends Thread {
             usersLoader.addUser(formattedInfo);
             outStream.writeObject("Success");
             outStream.flush();
-        }else{
+        } else{
             outStream.writeObject("Failed");
             outStream.flush();
         }
