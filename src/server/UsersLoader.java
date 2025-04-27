@@ -51,13 +51,13 @@ public class UsersLoader {
         return users.keySet();
     }
 
-    public boolean checkUser(String username, String password) throws IOException {
+    public String checkUser(String username, String password) throws IOException {
         loadUsers();
         List<String> infoToCheck = users.get(username);
-        if( infoToCheck != null){
-            return Objects.equals(password, infoToCheck.getFirst());
+        if (infoToCheck != null && Objects.equals(password, infoToCheck.getFirst())) {
+            return infoToCheck.getLast();
         }
-        return false;
+        return null;
 
     }
 

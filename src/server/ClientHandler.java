@@ -9,6 +9,7 @@ public class ClientHandler extends Thread {
     private ObjectOutputStream outStream;
     private UsersLoader usersLoader = new UsersLoader("../data/users.txt");
     private boolean flag = false;
+    private String clientId;
 
     public ClientHandler(Socket socket) throws IOException {
         this.clientSocket = socket;
@@ -49,14 +50,16 @@ public class ClientHandler extends Thread {
     private void login() throws IOException, ClassNotFoundException {
         String userName = (String) inStream.readObject();
         String password = (String) inStream.readObject();
+        clientId = usersLoader.checkUser(userName,password);
 
-        if(usersLoader.checkUser(userName,password)){
+        if(clientId != null){
             outStream.writeObject("Success");
             outStream.flush();
-        }else{
+        }
+        else {
             outStream.writeObject("Failed");
             outStream.flush();
-        }
+        } 
     }
 
     private void signup() throws IOException, ClassNotFoundException {
@@ -64,11 +67,14 @@ public class ClientHandler extends Thread {
         String password = (String) inStream.readObject();
 
         if(usersLoader.getUserInfo(userName).isEmpty()){
-            String formattedInfo = userName + ":" + password + "," + (int)(Math.random() * 101);
+            clientId = Integer.toString((int)(Math.random() * 101));
+
+            String formattedInfo = userName + ":" + password + "," + clientId;
             usersLoader.addUser(formattedInfo);
             outStream.writeObject("Success");
             outStream.flush();
-        } else{
+        } 
+        else {
             outStream.writeObject("Failed");
             outStream.flush();
         }
