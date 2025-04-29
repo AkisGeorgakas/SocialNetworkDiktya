@@ -1,7 +1,9 @@
 package client;
 
+import common.Packet;
 import java.net.*;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Objects;
 import java.util.Scanner;
 
@@ -12,6 +14,7 @@ public class Client {
     private String serverIP;
     private int serverPort;
     private boolean flag = false;
+    private boolean flag2 = false;
     private Scanner myObj = new Scanner(System.in);
 
     public Client(String ip, int port) {
@@ -52,12 +55,87 @@ public class Client {
                         break;
                 }
             }
+
+            while(!flag2) {
+                System.out.println("Select action:");
+                System.out.println("\n1) Upload\n2) Follow\n3) See your Social Graph");
+                String actionCode = myObj.nextLine();
+                while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3"))) {
+                    System.out.println("Wrong Input");
+                    actionCode = myObj.nextLine();
+                }
+
+
+                out.writeObject(actionCode);
+                out.flush();
+                System.out.println("egrapsa action code ston server");
+
+                switch (actionCode) {
+                    case "1":
+
+                        uploadPic();
+                        break;
+                    case "2":
+
+                        break;
+                    case "3":
+
+                        break;
+                }
+            }
+
+
             myObj.close();
 
         } catch (IOException e) {
             System.out.println(e.getMessage());
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
+        }
+
+    }
+
+    private void uploadPic() throws IOException {
+        System.out.println("ksekinhsa upload");
+        System.out.println("Enter filename please");
+        String pathname = myObj.nextLine();
+        // Load image and description
+        String fullpathname = "/directory/" + pathname;
+        File imageFile = new File(fullpathname);
+        System.out.println("new file");
+        byte[] imageBytes = Files.readAllBytes(imageFile.toPath());
+        System.out.println("bytes");
+        System.out.println("Enter a description please");
+        String description = myObj.nextLine();
+
+        byte[] descriptionBytes = description.getBytes();
+
+        // Combine data
+        byte[] fullData = new byte[imageBytes.length + descriptionBytes.length];
+        System.arraycopy(descriptionBytes, 0, fullData, 0, descriptionBytes.length);
+        System.arraycopy(imageBytes, 0, fullData, descriptionBytes.length, imageBytes.length);
+
+        // Divide into 10 packets
+        int packetSize = (int) Math.ceil(fullData.length / 10.0);
+        for (int i = 0; i < 10; i++) {
+            int start = i * packetSize;
+            int end = Math.min(start + packetSize, fullData.length);
+            byte[] chunk = new byte[end - start];
+            System.arraycopy(fullData, start, chunk, 0, end - start);
+
+            // Send packet
+            Packet packet = new Packet(i, chunk);
+            out.writeObject(packet);
+            out.flush();
+
+            // Wait for ACK
+            String ack = in.readLine();
+            if (!ack.equals("ACK" + i)) {
+                System.out.println("ACK mismatch or timeout. Resending...");
+                i--; // resend
+            } else {
+                System.out.println("Received: " + ack);
+            }
         }
 
     }
@@ -90,7 +168,9 @@ public class Client {
         String response = (String) in.readObject();
         if(response.equals("Success")){
             System.out.println("Mpravo sou");
+            flag = true;
         }
+
     }
 
     public void signup() throws IOException, ClassNotFoundException {
@@ -108,6 +188,7 @@ public class Client {
         String response = (String) in.readObject();
         if(response.equals("Success")){
             System.out.println("Mpravo sou");
+            flag = true;
         }
     }
     
