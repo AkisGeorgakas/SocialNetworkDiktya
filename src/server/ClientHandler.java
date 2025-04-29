@@ -72,36 +72,48 @@ public class ClientHandler extends Thread {
 
     private void handleUpload() throws IOException, ClassNotFoundException {
 
-        System.out.println("upload sequence initiated");
-        Map<Integer, byte[]> receivedPackets = new TreeMap<>();
+        if(uploadHandshake()) {
+            System.out.println("upload sequence initiated");
+            Map<Integer, byte[]> receivedPackets = new TreeMap<>();
 
-        for (int i = 0; i < 10; i++) {
-            System.out.println("inside for");
-            Packet packet = (Packet) inStream.readObject();
-            System.out.println("read Object");
-            System.out.println("Received packet #" + packet.sequenceNumber);
-            receivedPackets.put(packet.sequenceNumber, packet.data);
+            for (int i = 0; i < 10; i++) {
+                System.out.println("inside for");
+                Packet packet = (Packet) inStream.readObject();
+                System.out.println("read Object");
+                System.out.println("Received packet #" + packet.sequenceNumber);
+                receivedPackets.put(packet.sequenceNumber, packet.data);
 
-            // Send ACK
-            outStream.write(("ACK" + packet.sequenceNumber + "\n").getBytes());
-            outStream.flush();
+                // Send ACK
+                outStream.write(("ACK" + packet.sequenceNumber + "\n").getBytes());
+                outStream.flush();
+            }
+
+            // Reconstruct the image and description
+            ByteArrayOutputStream combined = new ByteArrayOutputStream();
+            for (int i = 0; i < 10; i++) {
+                combined.write(receivedPackets.get(i));
+            }
+
+            byte[] fullData = combined.toByteArray();
+
+            // First byte = description length
+            int descLength = fullData[0] & 0xFF;  // unsigned byte to int
+
+            byte[] descriptionBytes = new byte[descLength];
+            System.arraycopy(fullData, 1, descriptionBytes, 0, descLength);
+            String description = new String(descriptionBytes);
+
+            byte[] imageBytes = new byte[fullData.length - 1 - descLength];
+            System.arraycopy(fullData, 1 + descLength, imageBytes, 0, imageBytes.length);
+
+            // Save image
+            FileOutputStream fos = new FileOutputStream("received_image.jpg");
+            fos.write(imageBytes);
+            fos.close();
+
+        }else{
+            System.out.println("Hanshake Failed! Try again :(");
         }
-
-        // Reconstruct the image and description
-        ByteArrayOutputStream combined = new ByteArrayOutputStream();
-        for (int i = 0; i < 10; i++) {
-            combined.write(receivedPackets.get(i));
-        }
-
-        byte[] fullData = combined.toByteArray();
-
-        // Extract description and image
-        String fullString = new String(fullData);  // crude split if description size is known
-        System.out.println("Received description + image bytes: " + fullData.length);
-
-        FileOutputStream fos = new FileOutputStream("received_image.jpg");
-        fos.write(fullData);  // In a real case, you'd split description/image properly
-        fos.close();
     }
 
     private void login() throws IOException, ClassNotFoundException {
@@ -136,6 +148,17 @@ public class ClientHandler extends Thread {
         else {
             outStream.writeObject("Failed");
             outStream.flush();
+        }
+    }
+
+    private boolean uploadHandshake() throws IOException, ClassNotFoundException {
+        String handshakeResponse = (String) inStream.readObject();
+        if(handshakeResponse.equals("request to upload")){
+            outStream.writeObject("accepted");
+            return true;
+        }else{
+            outStream.writeObject("rejected");
+            return false;
         }
     }
 }

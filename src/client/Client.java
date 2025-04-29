@@ -95,49 +95,65 @@ public class Client {
 
     }
 
-    private void uploadPic() throws IOException {
-        System.out.println("ksekinhsa upload");
-        System.out.println("Enter filename please");
-        String pathname = myObj.nextLine();
-        // Load image and description
-        String fullpathname = "/directory/" + pathname;
-        File imageFile = new File(fullpathname);
-        System.out.println("new file");
-        byte[] imageBytes = Files.readAllBytes(imageFile.toPath());
-        System.out.println("bytes");
-        System.out.println("Enter a description please");
-        String description = myObj.nextLine();
+    private boolean uploadHandshake() throws IOException, ClassNotFoundException {
+        out.writeObject("request to upload");
+        String handshakeResponse = (String) in.readObject();
+        return handshakeResponse.equals("accepted");
+    }
 
-        byte[] descriptionBytes = description.getBytes();
+    private void uploadPic() throws IOException, ClassNotFoundException {
+        if(uploadHandshake()) {
+            System.out.println("ksekinhsa upload");
+            System.out.println("Enter filename please");
+            String pathname = myObj.nextLine();
+            // Load image and description
+            String fullpathname = "client/directory/" + pathname;
+            File imageFile = new File(fullpathname);
+            System.out.println("new file");
+            byte[] imageBytes = Files.readAllBytes(imageFile.toPath());
+            System.out.println("bytes");
+            System.out.println("Enter a description please");
+            String description = myObj.nextLine();
 
-        // Combine data
-        byte[] fullData = new byte[imageBytes.length + descriptionBytes.length];
-        System.arraycopy(descriptionBytes, 0, fullData, 0, descriptionBytes.length);
-        System.arraycopy(imageBytes, 0, fullData, descriptionBytes.length, imageBytes.length);
+            byte[] descriptionBytes = description.getBytes();
+            int descLength = descriptionBytes.length;
 
-        // Divide into 10 packets
-        int packetSize = (int) Math.ceil(fullData.length / 10.0);
-        for (int i = 0; i < 10; i++) {
-            int start = i * packetSize;
-            int end = Math.min(start + packetSize, fullData.length);
-            byte[] chunk = new byte[end - start];
-            System.arraycopy(fullData, start, chunk, 0, end - start);
-
-            // Send packet
-            Packet packet = new Packet(i, chunk);
-            out.writeObject(packet);
-            out.flush();
-
-            // Wait for ACK
-            String ack = in.readLine();
-            if (!ack.equals("ACK" + i)) {
-                System.out.println("ACK mismatch or timeout. Resending...");
-                i--; // resend
-            } else {
-                System.out.println("Received: " + ack);
+            if (descLength > 255) {
+                throw new IllegalArgumentException("Description too long for 1-byte length field");
             }
-        }
 
+
+            // Combine data
+            byte[] fullData = new byte[1 + descLength + imageBytes.length];
+            fullData[0] = (byte) descLength;
+            System.arraycopy(descriptionBytes, 0, fullData, 1, descLength);
+            System.arraycopy(imageBytes, 0, fullData, 1 + descLength, imageBytes.length);
+
+            // Divide into 10 packets
+            int packetSize = (int) Math.ceil(fullData.length / 10.0);
+            for (int i = 0; i < 10; i++) {
+                int start = i * packetSize;
+                int end = Math.min(start + packetSize, fullData.length);
+                byte[] chunk = new byte[end - start];
+                System.arraycopy(fullData, start, chunk, 0, end - start);
+
+                // Send packet
+                Packet packet = new Packet(i, chunk);
+                out.writeObject(packet);
+                out.flush();
+
+                // Wait for ACK
+                String ack = in.readLine();
+                if (!ack.equals("ACK" + i)) {
+                    System.out.println("ACK mismatch or timeout. Resending...");
+                    i--; // resend
+                } else {
+                    System.out.println("Received: " + ack);
+                }
+            }
+        }else{
+            System.out.println("Hanshake Failed! Try again :(");
+        }
     }
 
     public void stop() {
