@@ -5,8 +5,6 @@ import common.Packet;
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -155,36 +153,50 @@ public class ClientHandler extends Thread {
 
       System.out.println("Following: " + following);
 
-      ArrayList<String> followingUsersImgesMatch = new ArrayList<String>();
+      ArrayList<String[]> results = new ArrayList<String[]>();
+      boolean foundExactMatch = false;
 
       for(String s : following) {
 
         try{
-          BufferedReader reader = new BufferedReader(new FileReader("Profile_"+ GroupId + s + ".txt"));
+          BufferedReader reader = new BufferedReader(new FileReader("server/profiles/Profile_"+ GroupId + s + ".txt"));
           if(reader != null) {
             String line;
 
             while ((line = reader.readLine()) != null) {
 
-              String photoName = (line.split(" "))[2].split("\\.")[0];
-              if(photoName.equals(searcImgName)) {
-                followingUsersImgesMatch.add(s + " " + searcImgName);
+              String photoFullName = (line.split(" "))[2];
+              if(photoFullName.contains(searcImgName)) {
+
+                  for(String[] result : results){
+                      if(result[1].equals(photoFullName)){
+                          foundExactMatch = true;
+                          break;
+                      }
+                  }
+                  if(!foundExactMatch){
+                      results.add(new String[]{s, photoFullName});
+                  }
+                  foundExactMatch = false;
               }
             }
             reader.close();
-         
           }
 
         }catch(Exception e) {
           System.out.println(e.getMessage());
         }
-        
       }
+        outStream.writeObject(results);
 
+        int selectedImage =  Integer.parseInt((String)(inStream.readObject()));
 
+        handleDownload(results.get(selectedImage-1));
     }
 
-
+    private void handleDownload(String[] imageInfo){
+        System.out.println("Download sequence will start");
+    }
 
 
 

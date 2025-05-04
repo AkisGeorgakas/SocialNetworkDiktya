@@ -69,7 +69,7 @@ public class Client {
 
             while(!menuFlag) {
                 System.out.println("Select action:");
-                System.out.println("\n1) Upload Image from Client to Server\n2)Search Image on server\n3) Follow\n4) See your Social Graph\n5) Exit");
+                System.out.println("\n1) Upload Image from Client to Server\n2) Search Image on server\n3) Follow\n4) See your Social Graph\n5) Exit");
                 String actionCode = myObj.nextLine();
                 while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3") || Objects.equals(actionCode, "4") || Objects.equals(actionCode, "5"))) {
                     System.out.println("Wrong Input");
@@ -198,34 +198,53 @@ public class Client {
         }
     }
 
-    public void searchImg() throws IOException{
+    public void searchImg() throws IOException, ClassNotFoundException {
 
-      String searchImgInput = "";
+        String searchImgInput = "";
 
-      // check input filename
-      while(true){
-        System.out.println("Enter file you want to search:");
-        searchImgInput = myObj.nextLine();
+        // check input filename
+        while(true){
+            System.out.println("Enter file you want to search:");
+            searchImgInput = myObj.nextLine();
 
-        if(searchImgInput != null && searchImgInput.length() > 0){
-          break;
-        }else{
-          System.out.println("Wrong input!");
+            if(searchImgInput != null && searchImgInput.length() > 0){
+                break;
+            }else{
+                System.out.println("Wrong input!");
+            }
         }
-      }
 
-      // send server img input description
-      out = new ObjectOutputStream(connection.getOutputStream());
-      out.writeObject(searchImgInput);
-      out.flush();
+        // send client's keyword to the server
+        //out = new ObjectOutputStream(connection.getOutputStream());
+        out.writeObject(searchImgInput);
+        out.flush();
 
-      // SocialGraphLoader socialLoader = new SocialGraphLoader();
-      // ArrayList<String> following = socialLoader.getFollowing(clientId);
+        ArrayList<String[]> results = (ArrayList<String[]>)in.readObject();
+        int counter = 1;
+
+        if(!results.isEmpty()){
+            System.out.println("Found the following images:");
+            for(String[] result: results){
+                System.out.println(counter++ + ". " + result[1]);
+            }
+            System.out.println("Please select an image to download.(1-" + results.size() + ")");
+            String userSelection = myObj.nextLine();
+
+            out.writeObject(userSelection);
+            downloadPic();
+
+        }else{
+            System.out.println("No results found :(");
+
+        }
 
 
     }
 
+    private void downloadPic(){
 
+        System.out.println("Download sequence will start");
+    }
 
 
 
