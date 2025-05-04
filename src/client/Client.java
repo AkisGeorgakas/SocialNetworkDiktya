@@ -104,8 +104,25 @@ public class Client {
     private void uploadPic() throws IOException, ClassNotFoundException {
         if(uploadHandshake()) {
             System.out.println("ksekinhsa upload");
-            System.out.println("Enter filename please");
-            String pathname = myObj.nextLine();
+            String pathname = "";
+
+            // check input filename
+            while(true){
+              System.out.println("Enter filename please:");
+              pathname = myObj.nextLine();  
+              
+              boolean imgTag = pathname.contains(".jpg") || pathname.contains(".png") || pathname.contains(".jpeg") || pathname.contains(".JPG") || pathname.contains(".PNG") || pathname.contains(".JPEG");
+
+              if((pathname.split("\\.").length == 2) && imgTag){
+                break;
+              }else{
+                System.out.println("Wrong input!");
+              }
+            }
+
+            // send server img name
+            out.writeObject(pathname);
+
             // Load image and description
             String fullpathname = "client/directory/" + pathname;
             File imageFile = new File(fullpathname);

@@ -4,6 +4,7 @@ import common.Packet;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -15,6 +16,7 @@ public class ClientHandler extends Thread {
     private boolean flag = false;
     private boolean flag2 = false;
     private String clientId;
+    private final String GroupId = "45";
 
     public ClientHandler(Socket socket) throws IOException {
         this.clientSocket = socket;
@@ -76,6 +78,9 @@ public class ClientHandler extends Thread {
             System.out.println("upload sequence initiated");
             Map<Integer, byte[]> receivedPackets = new TreeMap<>();
 
+            String imgNameGiven = (String) inStream.readObject();
+            String[] imgNameArray = imgNameGiven.split("\\.");
+
             for (int i = 0; i < 10; i++) {
                 System.out.println("inside for");
                 Packet packet = (Packet) inStream.readObject();
@@ -107,9 +112,19 @@ public class ClientHandler extends Thread {
             System.arraycopy(fullData, 1 + descLength, imageBytes, 0, imageBytes.length);
 
             // Save image
-            FileOutputStream fos = new FileOutputStream("received_image.jpg");
+            FileOutputStream fos = new FileOutputStream("server/directories/"+ "directory_" + GroupId + clientId + "/" + imgNameGiven);
+
+            // Create txt with description given
+            File file = new File("server/directories/"+ "directory_" + GroupId + clientId + "/" + imgNameArray[0] + ".txt");
+            file.createNewFile();
+            FileWriter fw = new FileWriter(file);
+            fw.write(description + " " + imgNameGiven);
+            fw.close();
+
+
             fos.write(imageBytes);
             fos.close();
+
 
         }else{
             System.out.println("Hanshake Failed! Try again :(");
