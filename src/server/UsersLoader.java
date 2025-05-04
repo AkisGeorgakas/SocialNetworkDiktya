@@ -15,7 +15,8 @@ public class UsersLoader {
     }
 
     private void loadUsers() throws IOException {
-        try (BufferedReader reader = new BufferedReader(new FileReader(filepath))) {
+        try  {
+            BufferedReader reader = new BufferedReader(new FileReader(filepath));
             String line;
 
             while ((line = reader.readLine()) != null) {
@@ -39,6 +40,9 @@ public class UsersLoader {
                 }
             }
         }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public List<String> getUserInfo(String username) throws IOException {
@@ -51,6 +55,7 @@ public class UsersLoader {
         return users.keySet();
     }
 
+    // return clientId
     public String checkUser(String username, String password) throws IOException {
         loadUsers();
         List<String> infoToCheck = users.get(username);

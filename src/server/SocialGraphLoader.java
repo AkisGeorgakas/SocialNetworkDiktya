@@ -14,6 +14,7 @@ public class SocialGraphLoader {
         this.graph = new HashMap<>();
     }
 
+    // todo to be removed
     private void loadGraph() throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
             String line;
@@ -41,6 +42,7 @@ public class SocialGraphLoader {
         }
     }
 
+    // returns String[] of the people that follow given client
     public String[] getFollowers(String clientId) throws FileNotFoundException, IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
             String line;
@@ -61,6 +63,7 @@ public class SocialGraphLoader {
         return null;
     }
 
+    // returns ArrayList<String> of the people that given client follows
     public ArrayList<String> getFollowing(String clientId) throws FileNotFoundException, IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
             String line;
@@ -81,10 +84,13 @@ public class SocialGraphLoader {
         }
     }
 
+    // todo
     public Set<String> getAllUsers() {
         return graph.keySet();
     }
 
+    
+    // todo
     public void printGraph() {
         for (String user : graph.keySet()) {
             System.out.println(user + " follows " + graph.get(user));

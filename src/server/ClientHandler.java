@@ -4,6 +4,8 @@ import common.Packet;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -13,8 +15,8 @@ public class ClientHandler extends Thread {
     private ObjectInputStream inStream;
     private ObjectOutputStream outStream;
     private UsersLoader usersLoader = new UsersLoader("../data/users.txt");
-    private boolean flag = false;
-    private boolean flag2 = false;
+    private boolean loginFlag = false;
+    private boolean menuFlag = false;
     private String clientId;
     private final String GroupId = "45";
 
@@ -31,7 +33,8 @@ public class ClientHandler extends Thread {
 
             System.out.println("client.Client message: " + clientMessage);
 
-            while(!flag) {
+            // login
+            while(!loginFlag) {
                 String actionCode = (String) inStream.readObject();
 
                 System.out.println("client.Client message: " + actionCode);
@@ -44,11 +47,13 @@ public class ClientHandler extends Thread {
                         signup();
                         break;
                     case "3":
-                        flag = true;
+                    loginFlag = true;
                         break;
                 }
             }
-            while(!flag2) {
+
+            // menu
+            while(!menuFlag) {
                 String actionCode = (String) inStream.readObject();
 
                 System.out.println("client.Client message: " + actionCode);
@@ -58,10 +63,10 @@ public class ClientHandler extends Thread {
                         handleUpload();
                         break;
                     case "2":
-
+                        handleSearch();
                         break;
                     case "3":
-                        flag2 = true;
+                        menuFlag = true;
                         break;
                 }
             }
@@ -72,6 +77,7 @@ public class ClientHandler extends Thread {
         
     }
 
+    // Menu option 1
     private void handleUpload() throws IOException, ClassNotFoundException {
 
         if(uploadHandshake()) {
@@ -121,6 +127,12 @@ public class ClientHandler extends Thread {
             fw.write(description + " " + imgNameGiven);
             fw.close();
 
+            // update profile.txt
+            FileWriter proFileServerWriter = new FileWriter("server/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
+            proFileServerWriter.append("\n");
+            proFileServerWriter.append(clientId + " posted " + imgNameGiven);
+            proFileServerWriter.close();
+
 
             fos.write(imageBytes);
             fos.close();
@@ -131,6 +143,62 @@ public class ClientHandler extends Thread {
         }
     }
 
+
+    // Menu Option 2
+    private void handleSearch() throws IOException, ClassNotFoundException{
+
+      // read input from client
+      String searcImgName = (String) inStream.readObject();
+
+      SocialGraphLoader socialLoader = new SocialGraphLoader();
+      ArrayList<String> following = socialLoader.getFollowing(clientId);
+
+      System.out.println("Following: " + following);
+
+      ArrayList<String> followingUsersImgesMatch = new ArrayList<String>();
+
+      for(String s : following) {
+
+        try{
+          BufferedReader reader = new BufferedReader(new FileReader("Profile_"+ GroupId + s + ".txt"));
+          if(reader != null) {
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+
+              String photoName = (line.split(" "))[2].split("\\.")[0];
+              if(photoName.equals(searcImgName)) {
+                followingUsersImgesMatch.add(s + " " + searcImgName);
+              }
+            }
+            reader.close();
+         
+          }
+
+        }catch(Exception e) {
+          System.out.println(e.getMessage());
+        }
+        
+      }
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     private void login() throws IOException, ClassNotFoundException {
         String userName = (String) inStream.readObject();
         String password = (String) inStream.readObject();
@@ -139,7 +207,10 @@ public class ClientHandler extends Thread {
         if(clientId != null){
             outStream.writeObject("Success");
             outStream.flush();
-            flag = true;
+
+            outStream.writeObject(clientId);
+            outStream.flush();
+            loginFlag = true;
         }
         else {
             outStream.writeObject("Failed");
@@ -156,9 +227,14 @@ public class ClientHandler extends Thread {
 
             String formattedInfo = userName + ":" + password + "," + clientId;
             usersLoader.addUser(formattedInfo);
+
             outStream.writeObject("Success");
             outStream.flush();
-            flag = true;
+
+            outStream.writeObject(clientId);
+            outStream.flush();
+            
+            loginFlag = true;
         } 
         else {
             outStream.writeObject("Failed");

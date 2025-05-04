@@ -1,21 +1,32 @@
 package client;
 
 import common.Packet;
+import server.SocialGraphLoader;
+
 import java.net.*;
 import java.io.*;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.Scanner;
 
 public class Client {
-    private Socket connection;
+
     private ObjectOutputStream out;
     private ObjectInputStream in;
+
+    private Socket connection;
     private String serverIP;
     private int serverPort;
-    private boolean flag = false;
-    private boolean flag2 = false;
+
+    private boolean loginFlag = false;
+    private boolean menuFlag = false;
+
     private Scanner myObj = new Scanner(System.in);
+
+    private final String GroupId = "45";
+
+    private String clientId;
 
     public Client(String ip, int port) {
         this.serverIP = ip;
@@ -32,7 +43,7 @@ public class Client {
             out.writeObject("Hello there!");
             out.flush();
 
-            while(!flag) {
+            while(!loginFlag) {
                 System.out.println("\n1) Log In\n2) Sign Up\n3) Exit");
                 String actionCode = myObj.nextLine();
                 while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3"))) {
@@ -56,11 +67,11 @@ public class Client {
                 }
             }
 
-            while(!flag2) {
+            while(!menuFlag) {
                 System.out.println("Select action:");
-                System.out.println("\n1) Upload\n2) Follow\n3) See your Social Graph");
+                System.out.println("\n1) Upload Image from Client to Server\n2)Search Image on server\n3) Follow\n4) See your Social Graph\n5) Exit");
                 String actionCode = myObj.nextLine();
-                while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3"))) {
+                while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3") || Objects.equals(actionCode, "4") || Objects.equals(actionCode, "5"))) {
                     System.out.println("Wrong Input");
                     actionCode = myObj.nextLine();
                 }
@@ -72,15 +83,23 @@ public class Client {
 
                 switch (actionCode) {
                     case "1":
-
                         uploadPic();
                         break;
                     case "2":
-
+                        //Search Image
+                        searchImg();
                         break;
                     case "3":
-
+                        //Follow
                         break;
+                    case "4":
+                        //See your Social Graph
+                    break;
+
+                    case "5":
+                        //Exit
+                        menuFlag = true;
+                    break;
                 }
             }
 
@@ -168,17 +187,62 @@ public class Client {
                     System.out.println("Received: " + ack);
                 }
             }
+
+            // update profile.txt
+            FileWriter proFileServerWriter = new FileWriter("client/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
+            proFileServerWriter.append("\n");
+            proFileServerWriter.append(clientId + " posted " + pathname);
+            proFileServerWriter.close();
         }else{
             System.out.println("Hanshake Failed! Try again :(");
         }
     }
+
+    public void searchImg() throws IOException{
+
+      String searchImgInput = "";
+
+      // check input filename
+      while(true){
+        System.out.println("Enter file you want to search:");
+        searchImgInput = myObj.nextLine();
+
+        if(searchImgInput != null && searchImgInput.length() > 0){
+          break;
+        }else{
+          System.out.println("Wrong input!");
+        }
+      }
+
+      // send server img input description
+      out = new ObjectOutputStream(connection.getOutputStream());
+      out.writeObject(searchImgInput);
+      out.flush();
+
+      // SocialGraphLoader socialLoader = new SocialGraphLoader();
+      // ArrayList<String> following = socialLoader.getFollowing(clientId);
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
 
     public void stop() {
         try {
             in.close();
             out.close();
             connection.close();
-            flag = true;
+            loginFlag = true;
 
             System.out.println("Connection closed");
         } catch (IOException e) {
@@ -195,18 +259,26 @@ public class Client {
 
         out.writeObject(userName);
         out.flush();
+
         out.writeObject(password);
         out.flush();
 
         String response = (String) in.readObject();
+
         if(response.equals("Success")){
+          
+            clientId = (String) in.readObject();
+
             System.out.println("Mpravo sou");
-            flag = true;
+            loginFlag = true;
         }
 
     }
 
     public void signup() throws IOException, ClassNotFoundException {
+
+        // todo direcories
+        // todo create profiles 
         System.out.println("Dhmiourghste ena Username");
         String userName = myObj.nextLine();
 
@@ -215,13 +287,17 @@ public class Client {
 
         out.writeObject(userName);
         out.flush();
+
         out.writeObject(password);
         out.flush();
 
         String response = (String) in.readObject();
         if(response.equals("Success")){
+
+            clientId = (String) in.readObject();
+
             System.out.println("Mpravo sou");
-            flag = true;
+            loginFlag = true;
         }
     }
     
