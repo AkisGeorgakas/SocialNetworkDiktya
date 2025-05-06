@@ -87,4 +87,17 @@ public class UsersLoader {
             System.out.println(user + " has info: " + users.get(user));
         }
     }
+
+    public String getUserName(String userId) throws IOException {
+      loadUsers();
+        for (HashMap.Entry<String, List<String>> user : users.entrySet()) {
+
+          String tempClientId =  user.getValue().getLast();
+          if(tempClientId.equals(userId)){
+            return user.getKey();
+          }
+
+        }
+        return "";
+  }
 }

@@ -4,9 +4,13 @@ import common.Packet;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.*;
 
 public class ClientHandler extends Thread {
     private Socket clientSocket;
@@ -156,10 +160,10 @@ public class ClientHandler extends Thread {
       ArrayList<String[]> results = new ArrayList<String[]>();
       boolean foundExactMatch = false;
 
-      for(String s : following) {
+      for(String clientId : following) {
 
         try{
-          BufferedReader reader = new BufferedReader(new FileReader("server/profiles/Profile_"+ GroupId + s + ".txt"));
+          BufferedReader reader = new BufferedReader(new FileReader("server/profiles/Profile_"+ GroupId + clientId + ".txt"));
           if(reader != null) {
             String line;
 
@@ -169,14 +173,16 @@ public class ClientHandler extends Thread {
               if(photoFullName.contains(searcImgName)) {
 
                   for(String[] result : results){
-                      if(result[1].equals(photoFullName)){
+                      if(result[2].equals(photoFullName)){
                           foundExactMatch = true;
                           break;
                       }
                   }
+
                   if(!foundExactMatch){
-                      results.add(new String[]{s, photoFullName});
+                      results.add(new String[]{clientId, usersLoader.getUserName(clientId), photoFullName});
                   }
+
                   foundExactMatch = false;
               }
             }
@@ -189,14 +195,98 @@ public class ClientHandler extends Thread {
       }
         outStream.writeObject(results);
 
-        int selectedImage =  Integer.parseInt((String)(inStream.readObject()));
+        // int selectedImage =  Integer.parseInt((String)(inStream.readObject()));
 
-        handleDownload(results.get(selectedImage-1));
+        handleDownload(results);
     }
 
-    private void handleDownload(String[] imageInfo){
-        System.out.println("Download sequence will start");
+    private void handleDownload(ArrayList<String[]> imageInfo) throws ClassNotFoundException, IOException{
+      if(downloadHandshake()) {
+        System.out.println("Download sequence initiated");
+
+        // read user selection from client
+        String userSelection = (String) inStream.readObject();
+
+        String imageName = imageInfo.get(Integer.parseInt(userSelection))[2];
+        String imageDirectory = "server/directories/"+ "directory_" + GroupId + imageInfo.get(Integer.parseInt(userSelection))[0] + "/" + imageName;
+        Path imagePath = Paths.get(imageDirectory);
+
+        Map<Integer, byte[]> receivedPackets = new TreeMap<>();
+
+        byte[] imageBytes = Files.readAllBytes(imagePath);
+        byte[] descriptionBytes = imageName.getBytes();
+        int descLength = descriptionBytes.length;
+        
+        // Combine data
+        byte[] fullData = new byte[1 + descLength + imageBytes.length];
+
+        // Divide into 10 packets
+        int packetSize = (int) Math.ceil(fullData.length / 10.0);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        
+        for (int i = 0; i < 10; i++) {
+          int start = i * packetSize;
+          int end = Math.min(start + packetSize, fullData.length);
+          byte[] chunk = new byte[end - start];
+          System.arraycopy(fullData, start, chunk, 0, end - start);
+
+          // Send packet
+          Packet packet = new Packet(i, chunk);
+          outStream.writeObject(packet);
+          outStream.flush();
+
+          // Wait for ACK with timeout
+          Future<String> future = executor.submit(() -> inStream.readLine());
+          try {
+            String ack = future.get(3, TimeUnit.SECONDS); // Timeout set to 3 seconds
+            if (!ack.equals("ACK" + i)) {
+                System.out.println("ACK mismatch. Resending...");
+                i--; // resend
+            } else {
+                System.out.println("Received: " + ack);
+            }
+          } catch (TimeoutException e) {
+              System.out.println("ACK timeout. Resending...");
+              future.cancel(true); // cancel the task
+              i--; // resend
+          } catch (Exception e) {
+              e.printStackTrace();
+              break; // optional: break on unexpected exception
+          }
+
+          // Wait for ACK
+          // String ack = inStream.readLine();
+          // if (!ack.equals("ACK" + i)) {
+          //   System.out.println("ACK mismatch or timeout. Resending...");
+          //   i--; // resend
+          // } else {
+          //   System.out.println("Received: " + ack);
+          // }
+        }
+
+        // update profile.txt
+        FileWriter proFileServerWriter = new FileWriter("server/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
+        proFileServerWriter.append("\n");
+        proFileServerWriter.append(clientId + " reposted " + imageName);
+        proFileServerWriter.close();
+
+
+      }else{
+          System.out.println("Download Hanshake Failed! Try again :(");
+      }
     }
+
+    private boolean downloadHandshake() throws IOException, ClassNotFoundException {
+      String handshakeResponse = (String) inStream.readObject();
+      if(handshakeResponse.equals("request to download")){
+          outStream.writeObject("acceptedDownload");
+          return true;
+      }else{
+          outStream.writeObject("rejected");
+          return false;
+      }
+  }
 
 
 

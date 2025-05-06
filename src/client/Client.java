@@ -7,8 +7,10 @@ import java.net.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
+import java.util.TreeMap;
 
 public class Client {
 
@@ -198,6 +200,9 @@ public class Client {
         }
     }
 
+
+
+
     public void searchImg() throws IOException, ClassNotFoundException {
 
         String searchImgInput = "";
@@ -223,15 +228,26 @@ public class Client {
         int counter = 1;
 
         if(!results.isEmpty()){
+
             System.out.println("Found the following images:");
             for(String[] result: results){
-                System.out.println(counter++ + ". " + result[1]);
+                System.out.println(counter++ + ". User: " + result[1] + " - Picture: " + result[2]);
             }
+
             System.out.println("Please select an image to download.(1-" + results.size() + ")");
             String userSelection = myObj.nextLine();
+            while(true){
 
-            out.writeObject(userSelection);
-            downloadPic();
+              if(userSelection != null && userSelection.matches("\\d+") && Integer.parseInt(userSelection) <= results.size()){
+                break;
+              }else{
+                System.out.println("Wrong input! Please insert and integer between 1 and " + results.size());
+                userSelection = myObj.nextLine();
+              }
+            }
+            
+            // begin download process
+            downloadPic(userSelection, results.get(Integer.parseInt(userSelection)));
 
         }else{
             System.out.println("No results found :(");
@@ -241,12 +257,87 @@ public class Client {
 
     }
 
-    private void downloadPic(){
+    private void downloadPic(String userSelection, String[] imageInfo) throws ClassNotFoundException, IOException{
 
-        System.out.println("Download sequence will start");
+      if(downloadHandshake()) {
+        // send server user picture selection
+        out.writeObject(userSelection);
+
+        Map<Integer, byte[]> receivedPackets = new TreeMap<>();
+
+        String imgNameGiven = imageInfo[2] ;//todo
+        String[] imgNameArray ;//todo
+
+        // for the occasion of 9.e
+        boolean firstTime3rdPackage = false;
+
+        for (int i = 0; i < 10; i++) {
+
+
+          System.out.println("inside for");
+          Packet packet = (Packet) in.readObject();
+          System.out.println("read Object");
+          System.out.println("Received packet #" + packet.sequenceNumber);
+          receivedPackets.put(packet.sequenceNumber, packet.data);
+
+          
+          // Send ACK
+          // for the occasion of 9.e
+          // if(i == 2 && !firstTime3rdPackage){
+          //   System.out.println("Didn't send package on porpuse");
+          //   firstTime3rdPackage = true;
+          //   i--;
+          // }else{
+            out.write(("ACK" + packet.sequenceNumber + "\n").getBytes());
+            out.flush();
+          // }
+          
+        }
+
+        // Reconstruct the image and description
+        ByteArrayOutputStream combined = new ByteArrayOutputStream();
+        for (int i = 0; i < 10; i++) {
+            combined.write(receivedPackets.get(i));
+        }
+
+        byte[] fullData = combined.toByteArray();
+
+        // First byte = description length
+        int descLength = fullData[0] & 0xFF;  // unsigned byte to int
+
+        byte[] descriptionBytes = new byte[descLength];
+        System.arraycopy(fullData, 1, descriptionBytes, 0, descLength);
+        String description = new String(descriptionBytes);
+
+        byte[] imageBytes = new byte[fullData.length - 1 - descLength];
+        System.arraycopy(fullData, 1 + descLength, imageBytes, 0, imageBytes.length);
+
+        // Save image
+        FileOutputStream fos = new FileOutputStream("client/directory/" + imgNameGiven);
+
+        // Create txt with description given
+        File file = new File("client/directory/" + imageInfo[2].split("\\.")[0] + ".txt");
+        file.createNewFile();
+        FileWriter fw = new FileWriter(file);
+        fw.write(description + " " + imgNameGiven);
+        fw.close();
+
+        // update profile.txt
+        FileWriter proFileServerWriter = new FileWriter("client/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
+        proFileServerWriter.append("\n");
+        proFileServerWriter.append(clientId + " posted " + imgNameGiven);
+        proFileServerWriter.close();
+
+        fos.write(imageBytes);
+        fos.close();        
+      }
     }
 
-
+    private boolean downloadHandshake() throws IOException, ClassNotFoundException {
+      out.writeObject("request to download");
+      String handshakeResponse = (String) in.readObject();
+      return handshakeResponse.equals("acceptedDownload");
+  }
 
 
 
