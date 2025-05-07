@@ -19,6 +19,7 @@ public class Client {
 
     private Socket connection;
     private String serverIP;
+    
     private int serverPort;
 
     private boolean loginFlag = false;
@@ -37,76 +38,83 @@ public class Client {
 
     public void startConnection() {
         try {
-            connection = new Socket(serverIP, serverPort);
+          connection = new Socket(serverIP, serverPort);
 
-            out = new ObjectOutputStream(connection.getOutputStream());
-            in = new ObjectInputStream(connection.getInputStream());
+          out = new ObjectOutputStream(connection.getOutputStream());
+          in = new ObjectInputStream(connection.getInputStream());
 
-            out.writeObject("Hello there!");
+          out.writeObject("Established connection with server!");
+          out.flush();
+
+          while(!loginFlag) {
+            
+            System.out.println("**** Login Menu ****");
+            System.out.println("\n1) Log In\n2) Sign Up\n3) Exit\n\nPlease insert a valid action number from 1-3 to continue:");
+            String actionCode = myObj.nextLine();
+
+            while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3"))) {
+              System.out.println("Wrong Input! Please insert a valid action number from 1-3:");
+              actionCode = myObj.nextLine();                    
+            }
+
+            // send client's action code to the server
+            out.writeObject(actionCode);
             out.flush();
 
-            while(!loginFlag) {
-                System.out.println("\n1) Log In\n2) Sign Up\n3) Exit");
-                String actionCode = myObj.nextLine();
-                while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3"))) {
-                    System.out.println("Wrong Input");
-                    actionCode = myObj.nextLine();                    
-                }
+            switch (actionCode) {
+              case "1":
+                login();
+                break;
+              case "2":
+                signup();
+                break;
+              case "3":
+                stop();
+                break;
+            }
+          }
 
-                out.writeObject(actionCode);
-                out.flush();
+          while(!menuFlag) {
 
-                switch (actionCode) {
-                    case "1":
-                        login();
-                        break;
-                    case "2":
-                        signup();
-                        break;
-                    case "3":
-                        stop();
-                        break;
-                }
+            System.out.println("\n****Main Menu ****");
+            System.out.println("\n1) Upload Image from Client to Server\n2) Search Image on server\n3) Follow\n4) See your Social Graph\n5) Exit");
+            System.out.println("\nPlease insert a valid action number from 1-5 to continue:");
+            String actionCode = myObj.nextLine();
+
+            while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3") || Objects.equals(actionCode, "4") || Objects.equals(actionCode, "5"))) {
+              System.out.println("Wrong Input!\nPlease insert a valid action number from 1-5 to continue:");
+              actionCode = myObj.nextLine();
             }
 
-            while(!menuFlag) {
-                System.out.println("Select action:");
-                System.out.println("\n1) Upload Image from Client to Server\n2) Search Image on server\n3) Follow\n4) See your Social Graph\n5) Exit");
-                String actionCode = myObj.nextLine();
-                while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3") || Objects.equals(actionCode, "4") || Objects.equals(actionCode, "5"))) {
-                    System.out.println("Wrong Input");
-                    actionCode = myObj.nextLine();
-                }
+            // send client's action code to the server
+            out.writeObject(actionCode);
+            out.flush();
+            // System.out.println("egrapsa action code ston server");
 
+            switch (actionCode) {
+              case "1":
+                  uploadPic();
+                  break;
+              case "2":
+                  //Search Image
+                  searchImg();
+                  break;
+              case "3":
+                  //Follow
+                  break;
+              case "4":
+                  //See your Social Graph
+              break;
 
-                out.writeObject(actionCode);
-                out.flush();
-                System.out.println("egrapsa action code ston server");
-
-                switch (actionCode) {
-                    case "1":
-                        uploadPic();
-                        break;
-                    case "2":
-                        //Search Image
-                        searchImg();
-                        break;
-                    case "3":
-                        //Follow
-                        break;
-                    case "4":
-                        //See your Social Graph
-                    break;
-
-                    case "5":
-                        //Exit
-                        menuFlag = true;
-                    break;
-                }
+              case "5":
+                  //Exit
+                  menuFlag = true;
+              break;
             }
+          }
 
 
-            myObj.close();
+          myObj.close();
 
         } catch (IOException e) {
             System.out.println(e.getMessage());
@@ -119,17 +127,17 @@ public class Client {
     private boolean uploadHandshake() throws IOException, ClassNotFoundException {
         out.writeObject("request to upload");
         String handshakeResponse = (String) in.readObject();
-        return handshakeResponse.equals("accepted");
+        return handshakeResponse.equals("acceptedUpload");
     }
 
     private void uploadPic() throws IOException, ClassNotFoundException {
         if(uploadHandshake()) {
-            System.out.println("ksekinhsa upload");
+            // System.out.println("ksekinhsa upload");
             String pathname = "";
 
             // check input filename
             while(true){
-              System.out.println("Enter filename please:");
+              System.out.println("\nEnter filename please:");
               pathname = myObj.nextLine();  
               
               boolean imgTag = pathname.contains(".jpg") || pathname.contains(".png") || pathname.contains(".jpeg") || pathname.contains(".JPG") || pathname.contains(".PNG") || pathname.contains(".JPEG");
@@ -137,7 +145,7 @@ public class Client {
               if((pathname.split("\\.").length == 2) && imgTag){
                 break;
               }else{
-                System.out.println("Wrong input!");
+                System.out.println("\nWrong input! Please insert a valid filename:");
               }
             }
 
@@ -147,10 +155,10 @@ public class Client {
             // Load image and description
             String fullpathname = "client/directory/" + pathname;
             File imageFile = new File(fullpathname);
-            System.out.println("new file");
+
             byte[] imageBytes = Files.readAllBytes(imageFile.toPath());
-            System.out.println("bytes");
-            System.out.println("Enter a description please");
+
+            System.out.println("\nEnter a description please:");
             String description = myObj.nextLine();
 
             byte[] descriptionBytes = description.getBytes();
@@ -196,7 +204,7 @@ public class Client {
             proFileServerWriter.append(clientId + " posted " + pathname);
             proFileServerWriter.close();
         }else{
-            System.out.println("Hanshake Failed! Try again :(");
+            System.out.println("\nHanshake Failed! Try again :(");
         }
     }
 
@@ -209,13 +217,13 @@ public class Client {
 
         // check input filename
         while(true){
-            System.out.println("Enter file you want to search:");
+            System.out.println("\nEnter file you want to search:");
             searchImgInput = myObj.nextLine();
 
             if(searchImgInput != null && searchImgInput.length() > 0){
                 break;
             }else{
-                System.out.println("Wrong input!");
+                System.out.println("\nWrong input! Please insert a valid filename:");
             }
         }
 
@@ -241,7 +249,7 @@ public class Client {
               if(userSelection != null && userSelection.matches("\\d+") && Integer.parseInt(userSelection) <= results.size()){
                 break;
               }else{
-                System.out.println("Wrong input! Please insert and integer between 1 and " + results.size());
+                System.out.println("\nWrong input! Please insert and integer between 1 and " + results.size());
                 userSelection = myObj.nextLine();
               }
             }
@@ -265,8 +273,7 @@ public class Client {
 
         Map<Integer, byte[]> receivedPackets = new TreeMap<>();
 
-        String imgNameGiven = imageInfo[2] ;//todo
-        String[] imgNameArray ;//todo
+        String imgNameGiven = imageInfo[2] ;
 
         // for the occasion of 9.e
         boolean firstTime3rdPackage = false;
@@ -274,23 +281,23 @@ public class Client {
         for (int i = 0; i < 10; i++) {
 
 
-          System.out.println("inside for");
+          // System.out.println("inside for");
           Packet packet = (Packet) in.readObject();
-          System.out.println("read Object");
+          // System.out.println("read Object");
           System.out.println("Received packet #" + packet.sequenceNumber);
           receivedPackets.put(packet.sequenceNumber, packet.data);
 
           
           // Send ACK
           // for the occasion of 9.e
-          // if(i == 2 && !firstTime3rdPackage){
-          //   System.out.println("Didn't send package on porpuse");
-          //   firstTime3rdPackage = true;
-          //   i--;
-          // }else{
+          if(i == 2 && !firstTime3rdPackage){
+            System.out.println("Didn't send package on porpuse");
+            firstTime3rdPackage = true;
+            i--;
+          }else{
             out.write(("ACK" + packet.sequenceNumber + "\n").getBytes());
             out.flush();
-          // }
+          }
           
         }
 
@@ -330,6 +337,9 @@ public class Client {
 
         fos.write(imageBytes);
         fos.close();        
+
+        // 9.h)
+        System.out.println("The transmission is completed!");
       }
     }
 
@@ -361,27 +371,35 @@ public class Client {
     }
 
     public void login() throws IOException, ClassNotFoundException {
-        System.out.println("Kalispera, pws sas lene parakalw?");
-        String userName = myObj.nextLine();
 
-        System.out.println("Kai poios einai o kwdikos sas?");
-        String password = myObj.nextLine();
+      System.out.println("Username:");
+      String userName = myObj.nextLine();
 
-        out.writeObject(userName);
-        out.flush();
+      System.out.println("Password:");
+      String password = myObj.nextLine();
 
-        out.writeObject(password);
-        out.flush();
+      out.writeObject(userName);
+      out.flush();
 
-        String response = (String) in.readObject();
+      out.writeObject(password);
+      out.flush();
 
-        if(response.equals("Success")){
-          
-            clientId = (String) in.readObject();
+      // server response for login
+      String response = (String) in.readObject();
 
-            System.out.println("Mpravo sou");
-            loginFlag = true;
-        }
+      if(response.equals("SuccessLogin")){
+        
+        // update local clientId variable
+        clientId = (String) in.readObject();
+
+        System.out.println("\nSuccessful login!\n");
+        loginFlag = true;
+
+      }else{
+
+        System.out.println("\nFailed login! Username or password is incorrect.\nPlease try again.\n");
+        this.login();
+      }
 
     }
 
@@ -389,10 +407,10 @@ public class Client {
 
         // todo direcories
         // todo create profiles 
-        System.out.println("Dhmiourghste ena Username");
+        System.out.println("Create a username:");
         String userName = myObj.nextLine();
 
-        System.out.println("Dhmiourghste kai enan kwdiko");
+        System.out.println("Create a password:");
         String password = myObj.nextLine();
 
         out.writeObject(userName);
@@ -402,18 +420,22 @@ public class Client {
         out.flush();
 
         String response = (String) in.readObject();
-        if(response.equals("Success")){
+        if(response.equals("SuccessSignUp")){
 
             clientId = (String) in.readObject();
 
-            System.out.println("Mpravo sou");
+            System.out.println("\nSuccessful sign up!\nYou are now logged in.\n");
             loginFlag = true;
+
+        }else{
+          System.out.println("\nFailed to sign up! Username already exists.\nPlease try different username.\n");
+          this.signup();
         }
     }
     
     public static void main(String[] args) {
         Client client = new Client("localhost", 303);
-        System.out.println("Established connection with server!");
+        System.out.println("\nEstablished connection with server!\n");
         client.startConnection();
     }
 }

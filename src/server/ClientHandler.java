@@ -14,11 +14,14 @@ import java.util.concurrent.*;
 
 public class ClientHandler extends Thread {
     private Socket clientSocket;
+    private UsersLoader usersLoader = new UsersLoader("../data/users.txt");
+
     private ObjectInputStream inStream;
     private ObjectOutputStream outStream;
-    private UsersLoader usersLoader = new UsersLoader("../data/users.txt");
+
     private boolean loginFlag = false;
     private boolean menuFlag = false;
+
     private String clientId;
     private final String GroupId = "45";
 
@@ -31,27 +34,34 @@ public class ClientHandler extends Thread {
             outStream = new ObjectOutputStream(clientSocket.getOutputStream());
             inStream = new ObjectInputStream(clientSocket.getInputStream());
 
+            // connection message
             String clientMessage = (String) inStream.readObject();
-
             System.out.println("client.Client message: " + clientMessage);
 
             // login
             while(!loginFlag) {
-                String actionCode = (String) inStream.readObject();
 
-                System.out.println("client.Client message: " + actionCode);
+              // user login menu Selection
+              String actionCode = (String) inStream.readObject();
+              System.out.println("client.Client message: " + actionCode);
 
-                switch(actionCode) {
-                    case "1":
-                        login();
-                        break;
-                    case "2":
-                        signup();
-                        break;
-                    case "3":
-                    loginFlag = true;
-                        break;
-                }
+              switch(actionCode) {
+
+                case "1":
+                  login();
+                  break;
+
+                case "2":
+                  signup();
+                  break;
+
+                case "3":
+                  // Exit
+                  loginFlag = true;
+                  break;
+
+              }
+
             }
 
             // menu
@@ -247,7 +257,7 @@ public class ClientHandler extends Thread {
                 System.out.println("Received: " + ack);
             }
           } catch (TimeoutException e) {
-              System.out.println("ACK timeout. Resending...");
+              System.out.println("ACK timeout. Server did not receive ACK. Resending...");
               future.cancel(true); // cancel the task
               i--; // resend
           } catch (Exception e) {
@@ -273,7 +283,7 @@ public class ClientHandler extends Thread {
 
 
       }else{
-          System.out.println("Download Hanshake Failed! Try again :(");
+          System.out.println("\nDownload Hanshake Failed! Try again :(");
       }
     }
 
@@ -302,22 +312,25 @@ public class ClientHandler extends Thread {
 
 
     private void login() throws IOException, ClassNotFoundException {
-        String userName = (String) inStream.readObject();
-        String password = (String) inStream.readObject();
-        clientId = usersLoader.checkUser(userName,password);
+      String userName = (String) inStream.readObject();
+      String password = (String) inStream.readObject();
+      clientId = usersLoader.checkUser(userName,password);
 
-        if(clientId != null){
-            outStream.writeObject("Success");
-            outStream.flush();
+      if(clientId != null){
+          outStream.writeObject("SuccessLogin");
+          outStream.flush();
 
-            outStream.writeObject(clientId);
-            outStream.flush();
-            loginFlag = true;
-        }
-        else {
-            outStream.writeObject("Failed");
-            outStream.flush();
-        } 
+          outStream.writeObject(clientId);
+          outStream.flush();
+          loginFlag = true;
+      }
+      else {
+          outStream.writeObject("FailedLogin");
+          outStream.flush();
+
+          // resetLogin
+          this.login();
+      } 
     }
 
     private void signup() throws IOException, ClassNotFoundException {
@@ -330,7 +343,7 @@ public class ClientHandler extends Thread {
             String formattedInfo = userName + ":" + password + "," + clientId;
             usersLoader.addUser(formattedInfo);
 
-            outStream.writeObject("Success");
+            outStream.writeObject("SuccessSignUp");
             outStream.flush();
 
             outStream.writeObject(clientId);
@@ -341,13 +354,16 @@ public class ClientHandler extends Thread {
         else {
             outStream.writeObject("Failed");
             outStream.flush();
+
+            // resetSignup
+            this.signup();
         }
     }
 
     private boolean uploadHandshake() throws IOException, ClassNotFoundException {
         String handshakeResponse = (String) inStream.readObject();
         if(handshakeResponse.equals("request to upload")){
-            outStream.writeObject("accepted");
+            outStream.writeObject("acceptedUpload");
             return true;
         }else{
             outStream.writeObject("rejected");

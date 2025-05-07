@@ -6,8 +6,10 @@ import java.io.*;
 public class Server {
     private ServerSocket serverSocket;
     private Socket clientSocket;
+
     private ObjectOutputStream out;
     private ObjectInputStream in;
+    
     private int port;
 
     public Server(int port) {

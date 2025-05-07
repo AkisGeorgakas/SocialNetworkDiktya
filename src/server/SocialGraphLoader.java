@@ -7,9 +7,9 @@ import java.io.IOException;
 import java.util.*;
 
 public class SocialGraphLoader {
+  
     private final Map<String, List<String>> graph;
     private final String socialGraphPath = "../data/SocialGraph.txt";
-    private final String usersTxtPath = "../data/users.txt";
 
     public SocialGraphLoader() throws IOException {
         this.graph = new HashMap<>();
