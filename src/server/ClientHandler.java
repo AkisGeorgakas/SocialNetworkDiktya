@@ -4,6 +4,7 @@ import common.Packet;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -243,84 +244,70 @@ public class ClientHandler extends Thread {
 
         // Divide into 10 packets
         int packetSize = (int) Math.ceil(fullData.length / 10.0);
+        ArrayList<String> receivedAcknowledgements = new ArrayList<String>();
+        boolean ignoreNext = false;
+          for (int i = 0; i < 10; i++) {
+              if(!ignoreNext) {
+                  int start = i * packetSize;
+                  int end = Math.min(start + packetSize, fullData.length);
+                  byte[] chunk = new byte[end - start];
+                  System.arraycopy(fullData, start, chunk, 0, chunk.length);
 
-        for (int i = 0; i < 10; i++) {
-            int start = i * packetSize;
-            int end = Math.min(start + packetSize, fullData.length);
-            byte[] chunk = new byte[end - start];
-            System.arraycopy(fullData, start, chunk, 0, end - start);
+                  // Send the packet
+                  Packet packet = new Packet(i, chunk);
+                  outStream.writeObject(packet);
+                  outStream.flush();
 
-            // Send packet
-            Packet packet = new Packet(i, chunk);
-            outStream.writeObject(packet);
-            outStream.flush();
+                  System.out.println("Sent packet " + i);
+              }else{
+                  ignoreNext = false;
+              }
+              // Set temporary timeout for ACK
+              int originalTimeout = clientSocket.getSoTimeout();
+              try {
+                  clientSocket.setSoTimeout(3000); // 3-second timeout
 
-            System.out.println("Inside for. i = "+i);
+                  Object ackObj = inStream.readObject();
+                  if (ackObj instanceof String ack && ack.equals("ACK" + i) && !receivedAcknowledgements.contains(ack)) {
+                      System.out.println("Received: " + ack);
+                      receivedAcknowledgements.add(ack);
+                      System.out.println(receivedAcknowledgements);
+                  } else {
+                      if(i!=9) {
+                          if (ackObj instanceof String ack && receivedAcknowledgements.contains(ack)) {
+                              System.out.println("I reiceved a duplicate ACK. Ignored. -> " + ack);
+                              ignoreNext = true;
+                              i--; //run again and dont send a new packet
+                          } else {
+                              System.out.println("Invalid ACK. Resending packet " + i);
+                              i--; // resend
+                          }
+                      }else{
+                          break;
+                      }
+                  }
 
-            int originalTimeout = clientSocket.getSoTimeout();
-            clientSocket.setSoTimeout(6000); // 6-second timeout
-
-            try {
-                Object obj = inStream.readObject();
-                // process object
-            } catch (SocketTimeoutException e) {
-                System.out.println("Timed out waiting for ACK");
-            } finally {
-                clientSocket.setSoTimeout(originalTimeout); // Restore
-            }
-
-        /*
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        
-        for (int i = 0; i < 10; i++) {
-          int start = i * packetSize;
-          int end = Math.min(start + packetSize, fullData.length);
-          byte[] chunk = new byte[end - start];
-          System.arraycopy(fullData, start, chunk, 0, end - start);
-
-          // Send packet
-          Packet packet = new Packet(i, chunk);
-          outStream.writeObject(packet);
-          outStream.flush();
-
-          System.out.println("Inside for. i = "+i);
-          Future<Object> future = executor.submit(() -> inStream.readObject());
-          try {
-            Object result = future.get(6, TimeUnit.SECONDS);
-            if (result instanceof String ack && ack.equals("ACK" + i)) {
-                System.out.println("Received: " + ack);
-            } else {
-                System.out.println("Invalid ACK. Resending...");
-                i--; // resend
-            }
-            } catch (TimeoutException e) {
-            System.out.println("Timeout. Resending packet " + i);
-            i--; // resend
-            // Don't cancel the thread; just let it read and discard the result later
-          } catch (Exception e) {
-            e.printStackTrace();
-            break;
+              } catch (SocketTimeoutException e) {
+                  System.out.println("Timeout waiting for ACK" + i + ". Resending...");
+                  i--; // resend
+              } catch (Exception e) {
+                  e.printStackTrace();
+                  break;
+              } finally {
+                  try {
+                      clientSocket.setSoTimeout(originalTimeout); // Restore timeout
+                  } catch (SocketException e) {
+                      e.printStackTrace();
+                  }
+              }
           }
-          */
-
-          // Wait for ACK
-          // String ack = inStream.readLine();
-          // if (!ack.equals("ACK" + i)) {
-          //   System.out.println("ACK mismatch or timeout. Resending...");
-          //   i--; // resend
-          // } else {
-          //   System.out.println("Received: " + ack);
-          // }
-        }
-
-
 
         // update profile.txt
         FileWriter proFileServerWriter = new FileWriter("server/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
         proFileServerWriter.append("\n");
         proFileServerWriter.append(clientId + " reposted " + imageName);
         proFileServerWriter.close();
-        executor.shutdown();
+        //executor.shutdown();
 
 
       }else{

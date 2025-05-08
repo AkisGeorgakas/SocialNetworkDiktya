@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 
 public class Client {
 
@@ -118,7 +119,7 @@ public class Client {
 
         } catch (IOException e) {
             System.out.println(e.getMessage());
-        } catch (ClassNotFoundException e) {
+        } catch (ClassNotFoundException | InterruptedException e) {
             throw new RuntimeException(e);
         }
 
@@ -211,7 +212,7 @@ public class Client {
 
 
 
-    public void searchImg() throws IOException, ClassNotFoundException {
+    public void searchImg() throws IOException, ClassNotFoundException, InterruptedException {
 
         String searchImgInput = "";
 
@@ -265,41 +266,63 @@ public class Client {
 
     }
 
-    private void downloadPic(int userSelectionNum, String[] imageInfo) throws ClassNotFoundException, IOException{
+    private void downloadPic(int userSelectionNum, String[] imageInfo) throws ClassNotFoundException, IOException, InterruptedException {
 
       if(downloadHandshake()) {
         // send server user picture selection
         out.writeObject(userSelectionNum);
 
         Map<Integer, byte[]> receivedPackets = new TreeMap<>();
+        ArrayList<Integer> receivedPacketseqNums = new ArrayList<Integer>();
 
         String imgName = imageInfo[2] ;
 
         // for the occasion of 9.e
         boolean firstTime3rdPackage = false;
+        // for the occasion of 9.f
+        boolean firstTime6thPackage = false;
+
+        int counterr = 0;
+
 
         for (int i = 0; i < 10; i++) {
+            counterr++;
+            System.out.println(counterr);
 
 
           // System.out.println("inside for");
           Packet packet = (Packet) in.readObject();
           // System.out.println("read Object");
           System.out.println("Received packet #" + packet.sequenceNumber);
-          receivedPackets.put(packet.sequenceNumber, packet.data);
+          if(!receivedPacketseqNums.contains(packet.sequenceNumber)){
+              receivedPacketseqNums.add(packet.sequenceNumber);
+              receivedPackets.put(packet.sequenceNumber, packet.data);
+          }else{
+              if(i!=9) {
+                  System.out.println("Received a duplicate and didn't save it.");
+                  i--;
+              }
+          }
 
-          
           // Send ACK
           // for the occasion of 9.e
           if(i == 2 && !firstTime3rdPackage){
             System.out.println("Didn't send package on porpuse");
             firstTime3rdPackage = true;
             i--;
-          }else{
-            out.writeObject(("ACK" + packet.sequenceNumber));
-            out.flush();
+          } else if (i == 5 && !firstTime6thPackage) {
+              System.out.println("Delaying acknowledgement by 6 seconds...");
+              TimeUnit.SECONDS.sleep(6);
+              out.writeObject(("ACK" + packet.sequenceNumber));
+              out.flush();
+              firstTime6thPackage = true;
+          } else{
+              out.writeObject(("ACK" + packet.sequenceNumber));
+              out.flush();
           }
-
         }
+
+          System.out.println("Out of loop");
 
         // Reconstruct the image and description
         ByteArrayOutputStream combined = new ByteArrayOutputStream();
