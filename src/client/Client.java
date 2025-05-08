@@ -282,17 +282,14 @@ public class Client {
         // for the occasion of 9.f
         boolean firstTime6thPackage = false;
 
-        int counterr = 0;
+        // 9.g message from server
+        System.out.println("Txt status from server:\n" + in.readObject()+ "\n");
 
-
+        // for loop to receive 10 packets
         for (int i = 0; i < 10; i++) {
-            counterr++;
-            System.out.println(counterr);
 
-
-          // System.out.println("inside for");
           Packet packet = (Packet) in.readObject();
-          // System.out.println("read Object");
+
           System.out.println("Received packet #" + packet.sequenceNumber);
           if(!receivedPacketseqNums.contains(packet.sequenceNumber)){
               receivedPacketseqNums.add(packet.sequenceNumber);
@@ -303,26 +300,35 @@ public class Client {
                   i--;
               }
           }
-
-          // Send ACK
+          
           // for the occasion of 9.e
           if(i == 2 && !firstTime3rdPackage){
+
             System.out.println("Didn't send package on porpuse");
             firstTime3rdPackage = true;
-            i--;
-          } else if (i == 5 && !firstTime6thPackage) {
+            // i--;
+          }
+
+          // for the occasion of 9.f 
+          else if (i == 5 && !firstTime6thPackage) {
+
               System.out.println("Delaying acknowledgement by 6 seconds...");
               TimeUnit.SECONDS.sleep(6);
+
+              // Send ACK
               out.writeObject(("ACK" + packet.sequenceNumber));
               out.flush();
+
               firstTime6thPackage = true;
-          } else{
+
+          }else{
+              // Send ACK
               out.writeObject(("ACK" + packet.sequenceNumber));
               out.flush();
           }
-        }
 
-          System.out.println("Out of loop");
+
+        }
 
         // Reconstruct the image and description
         ByteArrayOutputStream combined = new ByteArrayOutputStream();
@@ -416,6 +422,7 @@ public class Client {
         clientId = (String) in.readObject();
 
         System.out.println("\nSuccessful login!\n");
+        System.out.println("Welcome client " + clientId + "\n");
         loginFlag = true;
 
       }else{

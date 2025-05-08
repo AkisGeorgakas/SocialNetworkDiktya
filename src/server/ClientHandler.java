@@ -9,6 +9,7 @@ import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -230,11 +231,26 @@ public class ClientHandler extends Thread {
 
         byte[] imageBytes = Files.readAllBytes(imagePath);
 
-        BufferedReader reader = new BufferedReader(new FileReader(descriptionDirectory));
-        String descriptionLine = reader.readLine();
+        String descriptionLine = "";
+        byte[] descriptionBytes = new byte[0];
+        int descriptionLength = 0;
 
-        byte[] descriptionBytes = descriptionLine.getBytes();
-        int descriptionLength = descriptionBytes.length;
+
+        // try catch to check if bind txt exists
+        try{
+          BufferedReader reader = new BufferedReader(new FileReader(descriptionDirectory));
+          descriptionLine = reader.readLine();
+          reader.close();
+          outStream.writeObject("Selected Picture has bind .txt file.");
+        }catch(Exception e) {
+          // System.out.println(e.getMessage());
+          // 9.g
+          outStream.writeObject("Selected Picture didn't have bind .txt file.");
+        }
+
+
+        descriptionBytes = descriptionLine.getBytes();
+        descriptionLength = descriptionBytes.length;
         
         // Combine data
         byte[] fullData = new byte[1 + descriptionLength + imageBytes.length];
@@ -247,59 +263,60 @@ public class ClientHandler extends Thread {
         ArrayList<String> receivedAcknowledgements = new ArrayList<String>();
         boolean ignoreNext = false;
           for (int i = 0; i < 10; i++) {
-              if(!ignoreNext) {
-                  int start = i * packetSize;
-                  int end = Math.min(start + packetSize, fullData.length);
-                  byte[] chunk = new byte[end - start];
-                  System.arraycopy(fullData, start, chunk, 0, chunk.length);
+            if(!ignoreNext) {
+              int start = i * packetSize;
+              int end = Math.min(start + packetSize, fullData.length);
+              byte[] chunk = new byte[end - start];
+              System.arraycopy(fullData, start, chunk, 0, chunk.length);
 
-                  // Send the packet
-                  Packet packet = new Packet(i, chunk);
-                  outStream.writeObject(packet);
-                  outStream.flush();
+              // Send the packet
+              Packet packet = new Packet(i, chunk);
+              outStream.writeObject(packet);
+              outStream.flush();
 
-                  System.out.println("Sent packet " + i);
-              }else{
-                  ignoreNext = false;
-              }
-              // Set temporary timeout for ACK
-              int originalTimeout = clientSocket.getSoTimeout();
-              try {
-                  clientSocket.setSoTimeout(3000); // 3-second timeout
+              System.out.println("Sent packet " + i);
+            }else{
+              ignoreNext = false;
+            }
+            // Set temporary timeout for ACK
+            int originalTimeout = clientSocket.getSoTimeout();
+            try {
+              clientSocket.setSoTimeout(3000); // 3-second timeout
 
-                  Object ackObj = inStream.readObject();
-                  if (ackObj instanceof String ack && ack.equals("ACK" + i) && !receivedAcknowledgements.contains(ack)) {
-                      System.out.println("Received: " + ack);
-                      receivedAcknowledgements.add(ack);
-                      System.out.println(receivedAcknowledgements);
-                  } else {
-                      if(i!=9) {
-                          if (ackObj instanceof String ack && receivedAcknowledgements.contains(ack)) {
-                              System.out.println("I reiceved a duplicate ACK. Ignored. -> " + ack);
-                              ignoreNext = true;
-                              i--; //run again and dont send a new packet
-                          } else {
-                              System.out.println("Invalid ACK. Resending packet " + i);
-                              i--; // resend
-                          }
-                      }else{
-                          break;
+              Object ackObj = inStream.readObject();
+              if (ackObj instanceof String ack && ack.equals("ACK" + i) && !receivedAcknowledgements.contains(ack)) {
+                  System.out.println("Received: " + ack);
+                  receivedAcknowledgements.add(ack);
+                  System.out.println(receivedAcknowledgements);
+              } else {
+                  if(i!=9) {
+                      if (ackObj instanceof String ack && receivedAcknowledgements.contains(ack)) {
+                          System.out.println("I reiceved a duplicate ACK. Ignored. -> " + ack);
+                          ignoreNext = true;
+                          i--; //run again and dont send a new packet
+                      } else {
+                          System.out.println("Invalid ACK. Resending packet " + i);
+                          i--; // resend
                       }
-                  }
-
-              } catch (SocketTimeoutException e) {
-                  System.out.println("Timeout waiting for ACK" + i + ". Resending...");
-                  i--; // resend
-              } catch (Exception e) {
-                  e.printStackTrace();
-                  break;
-              } finally {
-                  try {
-                      clientSocket.setSoTimeout(originalTimeout); // Restore timeout
-                  } catch (SocketException e) {
-                      e.printStackTrace();
+                  }else{
+                      break;
                   }
               }
+
+            } catch (SocketTimeoutException e) {
+              // 9.e message
+              System.out.println("Server did not receive ACK" + i + ". Resending...");
+              i--; // resend
+            } catch (Exception e) {
+              e.printStackTrace();
+              break;
+            } finally {
+              try {
+                  clientSocket.setSoTimeout(originalTimeout); // Restore timeout
+              } catch (SocketException e) {
+                  e.printStackTrace();
+              }
+            }
           }
 
         // update profile.txt
@@ -307,18 +324,26 @@ public class ClientHandler extends Thread {
         proFileServerWriter.append("\n");
         proFileServerWriter.append(clientId + " reposted " + imageName);
         proFileServerWriter.close();
-        //executor.shutdown();
 
+        // 9.h ------
+        String[] filesToCopy = {
+          imageName,
+          descriptionName
+        };
+
+          // making directories
+        String sourceDir = "server/directories/"+ "directory_" + GroupId + imageInfo.get(userSelectionNum)[0];
+        String targetDir = "server/directories/"+ "directory_" + GroupId + clientId;
+
+        this.copyFiles(sourceDir, targetDir, filesToCopy);
+        // 9.h ------
 
       }else{
           System.out.println("\nDownload Hanshake Failed! Try again :(");
       }
     }
 
-    private String waitingfunc() throws IOException {
-        return inStream.readLine();
-    }
-
+    // handshake for download
     private boolean downloadHandshake() throws IOException, ClassNotFoundException {
       String handshakeResponse = (String) inStream.readObject();
       if(handshakeResponse.equals("request to download")){
@@ -328,7 +353,25 @@ public class ClientHandler extends Thread {
           outStream.writeObject("rejected");
           return false;
       }
-  }
+    }
+
+
+    // 9.h
+    private void copyFiles(String sourceDest, String targetDest, String[] filesToCopyArr) {
+      Path sourceDir = Paths.get(sourceDest);
+      Path targetDir = Paths.get(targetDest);
+
+      for (String fileName : filesToCopyArr) {
+        Path sourceFile = sourceDir.resolve(fileName);
+        Path targetFile = targetDir.resolve(fileName);
+        try {
+          Files.copy(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+          System.out.println("\n" + "Copied: " + sourceFile + " to " + targetFile + "\n");
+        } catch (IOException e) {
+          System.err.println("\n" + "Failed to copy " + fileName + ": " + e.getMessage() + "\n");
+        }
+      }
+    }
 
 
 
