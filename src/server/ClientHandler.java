@@ -4,10 +4,13 @@ import common.Packet;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.SQLOutput;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.*;
@@ -215,24 +218,58 @@ public class ClientHandler extends Thread {
         System.out.println("Download sequence initiated");
 
         // read user selection from client
-        String userSelection = (String) inStream.readObject();
+        int userSelectionNum = (int) inStream.readObject();
 
-        String imageName = imageInfo.get(Integer.parseInt(userSelection))[2];
-        String imageDirectory = "server/directories/"+ "directory_" + GroupId + imageInfo.get(Integer.parseInt(userSelection))[0] + "/" + imageName;
+        String imageName = imageInfo.get(userSelectionNum)[2];
+        String imageDirectory = "server/directories/"+ "directory_" + GroupId + imageInfo.get(userSelectionNum)[0] + "/" + imageName;
+        String descriptionName = imageName.split("\\.")[0] + ".txt";
+        String descriptionDirectory = "server/directories/"+ "directory_" + GroupId + imageInfo.get(userSelectionNum)[0] + "/" + descriptionName;
+
         Path imagePath = Paths.get(imageDirectory);
 
-        Map<Integer, byte[]> receivedPackets = new TreeMap<>();
-
         byte[] imageBytes = Files.readAllBytes(imagePath);
-        byte[] descriptionBytes = imageName.getBytes();
-        int descLength = descriptionBytes.length;
+
+        BufferedReader reader = new BufferedReader(new FileReader(descriptionDirectory));
+        String descriptionLine = reader.readLine();
+
+        byte[] descriptionBytes = descriptionLine.getBytes();
+        int descriptionLength = descriptionBytes.length;
         
         // Combine data
-        byte[] fullData = new byte[1 + descLength + imageBytes.length];
+        byte[] fullData = new byte[1 + descriptionLength + imageBytes.length];
+        fullData[0] = (byte) descriptionLength;
+        System.arraycopy(descriptionBytes, 0, fullData, 1, descriptionLength);
+        System.arraycopy(imageBytes, 0, fullData, 1 + descriptionLength, imageBytes.length);
 
         // Divide into 10 packets
         int packetSize = (int) Math.ceil(fullData.length / 10.0);
 
+        for (int i = 0; i < 10; i++) {
+            int start = i * packetSize;
+            int end = Math.min(start + packetSize, fullData.length);
+            byte[] chunk = new byte[end - start];
+            System.arraycopy(fullData, start, chunk, 0, end - start);
+
+            // Send packet
+            Packet packet = new Packet(i, chunk);
+            outStream.writeObject(packet);
+            outStream.flush();
+
+            System.out.println("Inside for. i = "+i);
+
+            int originalTimeout = clientSocket.getSoTimeout();
+            clientSocket.setSoTimeout(6000); // 6-second timeout
+
+            try {
+                Object obj = inStream.readObject();
+                // process object
+            } catch (SocketTimeoutException e) {
+                System.out.println("Timed out waiting for ACK");
+            } finally {
+                clientSocket.setSoTimeout(originalTimeout); // Restore
+            }
+
+        /*
         ExecutorService executor = Executors.newSingleThreadExecutor();
         
         for (int i = 0; i < 10; i++) {
@@ -246,24 +283,25 @@ public class ClientHandler extends Thread {
           outStream.writeObject(packet);
           outStream.flush();
 
-          // Wait for ACK with timeout
-          Future<String> future = executor.submit(() -> inStream.readLine());
+          System.out.println("Inside for. i = "+i);
+          Future<Object> future = executor.submit(() -> inStream.readObject());
           try {
-            String ack = future.get(3, TimeUnit.SECONDS); // Timeout set to 3 seconds
-            if (!ack.equals("ACK" + i)) {
-                System.out.println("ACK mismatch. Resending...");
-                i--; // resend
-            } else {
+            Object result = future.get(6, TimeUnit.SECONDS);
+            if (result instanceof String ack && ack.equals("ACK" + i)) {
                 System.out.println("Received: " + ack);
+            } else {
+                System.out.println("Invalid ACK. Resending...");
+                i--; // resend
             }
-          } catch (TimeoutException e) {
-              System.out.println("ACK timeout. Server did not receive ACK. Resending...");
-              future.cancel(true); // cancel the task
-              i--; // resend
+            } catch (TimeoutException e) {
+            System.out.println("Timeout. Resending packet " + i);
+            i--; // resend
+            // Don't cancel the thread; just let it read and discard the result later
           } catch (Exception e) {
-              e.printStackTrace();
-              break; // optional: break on unexpected exception
+            e.printStackTrace();
+            break;
           }
+          */
 
           // Wait for ACK
           // String ack = inStream.readLine();
@@ -275,16 +313,23 @@ public class ClientHandler extends Thread {
           // }
         }
 
+
+
         // update profile.txt
         FileWriter proFileServerWriter = new FileWriter("server/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
         proFileServerWriter.append("\n");
         proFileServerWriter.append(clientId + " reposted " + imageName);
         proFileServerWriter.close();
+        executor.shutdown();
 
 
       }else{
           System.out.println("\nDownload Hanshake Failed! Try again :(");
       }
+    }
+
+    private String waitingfunc() throws IOException {
+        return inStream.readLine();
     }
 
     private boolean downloadHandshake() throws IOException, ClassNotFoundException {

@@ -253,9 +253,9 @@ public class Client {
                 userSelection = myObj.nextLine();
               }
             }
-            
+            int userSelectionNum = Integer.parseInt(userSelection) - 1;
             // begin download process
-            downloadPic(userSelection, results.get(Integer.parseInt(userSelection)));
+            downloadPic(userSelectionNum, results.get(userSelectionNum));
 
         }else{
             System.out.println("No results found :(");
@@ -265,15 +265,15 @@ public class Client {
 
     }
 
-    private void downloadPic(String userSelection, String[] imageInfo) throws ClassNotFoundException, IOException{
+    private void downloadPic(int userSelectionNum, String[] imageInfo) throws ClassNotFoundException, IOException{
 
       if(downloadHandshake()) {
         // send server user picture selection
-        out.writeObject(userSelection);
+        out.writeObject(userSelectionNum);
 
         Map<Integer, byte[]> receivedPackets = new TreeMap<>();
 
-        String imgNameGiven = imageInfo[2] ;
+        String imgName = imageInfo[2] ;
 
         // for the occasion of 9.e
         boolean firstTime3rdPackage = false;
@@ -295,10 +295,10 @@ public class Client {
             firstTime3rdPackage = true;
             i--;
           }else{
-            out.write(("ACK" + packet.sequenceNumber + "\n").getBytes());
+            out.writeObject(("ACK" + packet.sequenceNumber));
             out.flush();
           }
-          
+
         }
 
         // Reconstruct the image and description
@@ -320,19 +320,19 @@ public class Client {
         System.arraycopy(fullData, 1 + descLength, imageBytes, 0, imageBytes.length);
 
         // Save image
-        FileOutputStream fos = new FileOutputStream("client/directory/" + imgNameGiven);
+        FileOutputStream fos = new FileOutputStream("client/directory/" + imgName);
 
         // Create txt with description given
         File file = new File("client/directory/" + imageInfo[2].split("\\.")[0] + ".txt");
         file.createNewFile();
         FileWriter fw = new FileWriter(file);
-        fw.write(description + " " + imgNameGiven);
+        fw.write(description + " " + imgName);
         fw.close();
 
         // update profile.txt
         FileWriter proFileServerWriter = new FileWriter("client/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
         proFileServerWriter.append("\n");
-        proFileServerWriter.append(clientId + " posted " + imgNameGiven);
+        proFileServerWriter.append(clientId + " posted " + imgName);
         proFileServerWriter.close();
 
         fos.write(imageBytes);
