@@ -75,7 +75,10 @@ public class Client {
             }
           }
 
+
+
           while(!menuFlag) {
+
 
             System.out.println("\n****Main Menu ****");
             System.out.println("\n1) Upload Image from Client to Server\n2) Search Image on server\n3) Follow\n4) See your Social Graph\n5) Exit");
@@ -87,11 +90,12 @@ public class Client {
               actionCode = myObj.nextLine();
             }
 
+
             // send client's action code to the server
             out.writeObject(actionCode);
             out.flush();
-            // System.out.println("egrapsa action code ston server");
 
+            // System.out.println("egrapsa action code ston server");
             switch (actionCode) {
               case "1":
                   uploadPic();
@@ -135,11 +139,13 @@ public class Client {
         if(uploadHandshake()) {
             // System.out.println("ksekinhsa upload");
             String pathname = "";
+            String pathNameClean = "";
 
             // check input filename
             while(true){
               System.out.println("\nEnter filename please:");
-              pathname = myObj.nextLine();  
+              pathname = myObj.nextLine();
+
               
               boolean imgTag = pathname.contains(".jpg") || pathname.contains(".png") || pathname.contains(".jpeg") || pathname.contains(".JPG") || pathname.contains(".PNG") || pathname.contains(".JPEG");
 
@@ -150,6 +156,7 @@ public class Client {
               }
             }
 
+            pathNameClean = pathname.split("\\.")[0];
             // send server img name
             out.writeObject(pathname);
 
@@ -161,6 +168,13 @@ public class Client {
 
             System.out.println("\nEnter a description please:");
             String description = myObj.nextLine();
+
+            // Create a txt with description given
+            File file = new File("client/directory/" + pathNameClean + ".txt");
+            file.createNewFile();
+            FileWriter fw = new FileWriter(file);
+            fw.write(description + " " + pathname);
+            fw.close();
 
             byte[] descriptionBytes = description.getBytes();
             int descLength = descriptionBytes.length;
@@ -268,107 +282,12 @@ public class Client {
 
     private void downloadPic(int userSelectionNum, String[] imageInfo) throws ClassNotFoundException, IOException, InterruptedException {
 
+        //TODO: Check if this image is already in my directory
       if(downloadHandshake()) {
         // send server user picture selection
         out.writeObject(userSelectionNum);
 
-        Map<Integer, byte[]> receivedPackets = new TreeMap<>();
-        ArrayList<Integer> receivedPacketseqNums = new ArrayList<Integer>();
-
-        String imgName = imageInfo[2] ;
-
-        // for the occasion of 9.e
-        boolean firstTime3rdPackage = false;
-        // for the occasion of 9.f
-        boolean firstTime6thPackage = false;
-
-        // 9.g message from server
-        System.out.println("Txt status from server:\n" + in.readObject()+ "\n");
-
-        // for loop to receive 10 packets
-        for (int i = 0; i < 10; i++) {
-
-          Packet packet = (Packet) in.readObject();
-
-          System.out.println("Received packet #" + packet.sequenceNumber);
-          if(!receivedPacketseqNums.contains(packet.sequenceNumber)){
-              receivedPacketseqNums.add(packet.sequenceNumber);
-              receivedPackets.put(packet.sequenceNumber, packet.data);
-          }else{
-              if(i!=9) {
-                  System.out.println("Received a duplicate and didn't save it.");
-                  i--;
-              }
-          }
-          
-          // for the occasion of 9.e
-          if(i == 2 && !firstTime3rdPackage){
-
-            System.out.println("Didn't send package on porpuse");
-            firstTime3rdPackage = true;
-            // i--;
-          }
-
-          // for the occasion of 9.f 
-          else if (i == 5 && !firstTime6thPackage) {
-
-              System.out.println("Delaying acknowledgement by 6 seconds...");
-              TimeUnit.SECONDS.sleep(6);
-
-              // Send ACK
-              out.writeObject(("ACK" + packet.sequenceNumber));
-              out.flush();
-
-              firstTime6thPackage = true;
-
-          }else{
-              // Send ACK
-              out.writeObject(("ACK" + packet.sequenceNumber));
-              out.flush();
-          }
-
-
-        }
-
-        // Reconstruct the image and description
-        ByteArrayOutputStream combined = new ByteArrayOutputStream();
-        for (int i = 0; i < 10; i++) {
-            combined.write(receivedPackets.get(i));
-        }
-
-        byte[] fullData = combined.toByteArray();
-
-        // First byte = description length
-        int descLength = fullData[0] & 0xFF;  // unsigned byte to int
-
-        byte[] descriptionBytes = new byte[descLength];
-        System.arraycopy(fullData, 1, descriptionBytes, 0, descLength);
-        String description = new String(descriptionBytes);
-
-        byte[] imageBytes = new byte[fullData.length - 1 - descLength];
-        System.arraycopy(fullData, 1 + descLength, imageBytes, 0, imageBytes.length);
-
-        // Save image
-        FileOutputStream fos = new FileOutputStream("client/directory/" + imgName);
-
-        // Create txt with description given
-        File file = new File("client/directory/" + imageInfo[2].split("\\.")[0] + ".txt");
-        file.createNewFile();
-        FileWriter fw = new FileWriter(file);
-        fw.write(description + " " + imgName);
-        fw.close();
-
-        // update profile.txt
-        FileWriter proFileServerWriter = new FileWriter("client/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
-        proFileServerWriter.append("\n");
-        proFileServerWriter.append(clientId + " posted " + imgName);
-        proFileServerWriter.close();
-
-        fos.write(imageBytes);
-        fos.close();        
-
-        // 9.h)
-        System.out.println("The transmission is completed!");
+        downloadSomething(imageInfo[2]);
       }
     }
 
@@ -377,13 +296,6 @@ public class Client {
       String handshakeResponse = (String) in.readObject();
       return handshakeResponse.equals("acceptedDownload");
   }
-
-
-
-
-
-
-
 
 
     public void stop() {
@@ -399,7 +311,7 @@ public class Client {
         }
     }
 
-    public void login() throws IOException, ClassNotFoundException {
+    public void login() throws IOException, ClassNotFoundException, InterruptedException {
 
       System.out.println("Username:");
       String userName = myObj.nextLine();
@@ -424,6 +336,8 @@ public class Client {
         System.out.println("\nSuccessful login!\n");
         System.out.println("Welcome client " + clientId + "\n");
         loginFlag = true;
+        updateLocalFiles();
+        checkNotifications();
 
       }else{
 
@@ -435,7 +349,7 @@ public class Client {
 
     public void signup() throws IOException, ClassNotFoundException {
 
-        // todo direcories
+        // todo directories
         // todo create profiles 
         System.out.println("Create a username:");
         String userName = myObj.nextLine();
@@ -462,10 +376,162 @@ public class Client {
           this.signup();
         }
     }
-    
+
+    private void updateLocalFiles() throws IOException, ClassNotFoundException, InterruptedException {
+        emptyFolder(new File("client/directory"));
+        emptyFolder(new File("client/profiles") );
+
+        String fileName = "";
+        boolean finishedDownload = false;
+        while(!finishedDownload){
+            fileName = (String)in.readObject();
+            if(fileName.equals("NotFound") || fileName.equals("DONE")){
+                finishedDownload = true;
+            }else{
+                downloadSomething(fileName);
+            }
+        }
+    }
+
+    private void downloadSomething(String imgName) throws IOException, ClassNotFoundException, InterruptedException {
+
+        Map<Integer, byte[]> receivedPackets = new TreeMap<>();
+        ArrayList<Integer> receivedPacketseqNums = new ArrayList<Integer>();
+
+
+        // for the occasion of 9.e
+        boolean firstTime3rdPackage = false;
+        // for the occasion of 9.f
+        boolean firstTime6thPackage = false;
+
+        // 9.g message from server
+        System.out.println("Txt status from server:\n" + in.readObject()+ "\n");
+
+        // for loop to receive 10 packets
+        for (int i = 0; i < 10; i++) {
+
+            Packet packet = (Packet) in.readObject();
+
+            System.out.println("Received packet #" + packet.sequenceNumber);
+            if(!receivedPacketseqNums.contains(packet.sequenceNumber)){
+                receivedPacketseqNums.add(packet.sequenceNumber);
+                receivedPackets.put(packet.sequenceNumber, packet.data);
+            }else{
+                if(i!=9) {
+                    System.out.println("Received a duplicate and didn't save it.");
+                    i--;
+                }
+            }
+
+            // for the occasion of 9.e
+            if(i == 2 && !firstTime3rdPackage){
+
+                System.out.println("Didn't send package on porpuse");
+                firstTime3rdPackage = true;
+                // i--;
+            }
+
+            // for the occasion of 9.f
+            else if (i == 5 && !firstTime6thPackage) {
+
+                System.out.println("Delaying acknowledgement by 6 seconds...");
+                TimeUnit.SECONDS.sleep(6);
+
+                // Send ACK
+                out.writeObject(("ACK" + packet.sequenceNumber));
+                out.flush();
+
+                firstTime6thPackage = true;
+
+            }else{
+                // Send ACK
+                out.writeObject(("ACK" + packet.sequenceNumber));
+                out.flush();
+            }
+
+
+        }
+
+        // Reconstruct the image and description
+        ByteArrayOutputStream combined = new ByteArrayOutputStream();
+        for (int i = 0; i < 10; i++) {
+            combined.write(receivedPackets.get(i));
+        }
+
+        byte[] fullData = combined.toByteArray();
+
+        // First byte = description length
+        int descLength = fullData[0] & 0xFF;  // unsigned byte to int
+
+        byte[] descriptionBytes = new byte[descLength];
+        System.arraycopy(fullData, 1, descriptionBytes, 0, descLength);
+        String description = new String(descriptionBytes);
+
+        byte[] imageBytes = new byte[fullData.length - 1 - descLength];
+        System.arraycopy(fullData, 1 + descLength, imageBytes, 0, imageBytes.length);
+
+        // Save image
+        FileOutputStream fos = new FileOutputStream("client/directory/" + imgName);
+
+        // Create txt with description given
+        File file = new File("client/directory/" + imgName.split("\\.")[0] + ".txt");
+        file.createNewFile();
+        FileWriter fw = new FileWriter(file);
+        fw.write(description + " " + imgName);
+        fw.close();
+
+        // update profile.txt
+        FileWriter proFileServerWriter = new FileWriter("client/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
+        proFileServerWriter.append("\n");
+        proFileServerWriter.append(clientId + " posted " + imgName);
+        proFileServerWriter.close();
+
+        fos.write(imageBytes);
+        fos.close();
+
+        // 9.h)
+        System.out.println("The transmission is completed!");
+    }
+
+    private void checkNotifications() throws IOException, ClassNotFoundException {
+
+        // Notification Format: "senderId"
+        ArrayList<String> notifications = (ArrayList<String>)in.readObject();
+        String action = "";
+        if(notifications.isEmpty()){
+            System.out.println("You have already checked all your notifications! :)");
+        }else{
+            System.out.println("You have "+notifications.size() + " notifications.\n");
+            for (String notification : notifications) {
+                System.out.println("User " + notification + " wants to follow you.");
+                System.out.println("Would you like to: \n1) Accept, \n2) Reject,\n3) Accept and follow back");
+                action = myObj.nextLine();
+                while (!(Objects.equals(action, "1") || Objects.equals(action, "2") || Objects.equals(action, "3"))){
+                    System.out.println("Wrong Input!\nPlease insert a valid action number from 1-3 to continue:");
+                    action = myObj.nextLine();
+                }
+                out.writeObject(action + " " + notification);
+            }
+
+        }
+    }
+
+    public static void emptyFolder(File folder) {
+        File[] files = folder.listFiles();
+        if(files!=null) {
+            for(File f: files) {
+                if(f.isDirectory()) {
+                    emptyFolder(f);
+                } else {
+                    f.delete();
+                }
+            }
+        }
+    }
+
     public static void main(String[] args) {
         Client client = new Client("localhost", 303);
-        System.out.println("\nEstablished connection with server!\n");
+        System.out.println("\nEstablishing... connection with server!\n");
         client.startConnection();
     }
 }
