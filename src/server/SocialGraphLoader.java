@@ -1,10 +1,10 @@
 package server;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
@@ -17,7 +17,7 @@ public class SocialGraphLoader {
         this.graph = new HashMap<>();
     }
 
-    // todo to be removed
+    // TODO: to be removed
     private void loadGraph() throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
             String line;
@@ -46,7 +46,7 @@ public class SocialGraphLoader {
     }
 
     // returns String[] of the people that follow given client
-    public String[] getFollowers(String clientId) throws FileNotFoundException, IOException {
+    public String[] getFollowers(String clientId) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
             String line;
 
@@ -66,10 +66,10 @@ public class SocialGraphLoader {
     }
 
     // returns ArrayList<String> of the people that given client follows
-    public ArrayList<String> getFollowing(String clientId) throws FileNotFoundException, IOException {
+    public ArrayList<String> getFollowing(String clientId) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
             String line;
-            ArrayList<String> following = new ArrayList<String>();
+            ArrayList<String> following = new ArrayList<>();
 
             while ((line = reader.readLine()) != null) {
                 String[] all = line.split(" ");
@@ -86,13 +86,13 @@ public class SocialGraphLoader {
         }
     }
 
-    // todo
+    // TODO: to be removed
     public Set<String> getAllUsers() {
         return graph.keySet();
     }
 
     
-    // todo
+    // TODO: to be removed
     public void printGraph() {
         for (String user : graph.keySet()) {
             System.out.println(user + " follows " + graph.get(user));
@@ -100,25 +100,28 @@ public class SocialGraphLoader {
     }
 
     public void acceptFollowRequests(String clientId, ArrayList<String> acceptFrom) throws IOException {
-        List<String> lines = Files.readAllLines(Paths.get(socialGraphPath));
+
+        Path path = Paths.get(socialGraphPath);
+        List<String> lines = Files.readAllLines(path);
         List<String> updatedLines = new ArrayList<>();
 
-//Thewrhtika auto prosthetei autous pou me akolouthhsan sthn grammh mou
         boolean updated = false;
         for (String line : lines) {
             String[] parts = line.trim().split("\\s+");
 
             if (parts.length > 0 && parts[0].equals(clientId)) {
 
+                StringBuilder lineBuilder = new StringBuilder(line);
                 for(String followerID : acceptFrom) {
                     // Check if follower already exists to avoid duplicates
                     boolean alreadyFollowed = Arrays.asList(parts).contains(followerID);
                     if (!alreadyFollowed) {
-                        line += " " + followerID;
+                        lineBuilder.append(" ").append(followerID);
                     }
                     updated = true;
 
                 }
+                line = lineBuilder.toString();
             }
             updatedLines.add(line);
         }
@@ -126,20 +129,17 @@ public class SocialGraphLoader {
         // If the targetClientID was not found, optionally add it as a new line
 
         if (!updated) {
-            String newLine = clientId;
+            StringBuilder newLine = new StringBuilder(clientId);
             for(String followerID : acceptFrom){
-                newLine += " " + followerID;
+                newLine.append(" ").append(followerID);
             }
-            updatedLines.add(newLine);
+            updatedLines.add(newLine.toString());
         }
 
         // Rewrite the file
-        Files.write(Paths.get(socialGraphPath), updatedLines);
+        Files.write(path, updatedLines);
 
     }
 
-    public void sendFollowRequests(String clientId,ArrayList<String> sendTo) {
-
-    }
 
 }

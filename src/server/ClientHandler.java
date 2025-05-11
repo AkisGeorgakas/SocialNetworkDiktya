@@ -16,7 +16,7 @@ import java.util.TreeMap;
 
 public class ClientHandler extends Thread {
     private final Socket clientSocket;
-    private UsersLoader usersLoader = new UsersLoader("../data/users.txt");
+    private final UsersLoader usersLoader = new UsersLoader("../data/users.txt");
     SocialGraphLoader socialLoader = new SocialGraphLoader();
 
     private ObjectInputStream inStream;
@@ -145,7 +145,9 @@ public class ClientHandler extends Thread {
 
             // Create txt with description given
             File file = new File("server/directories/" + "directory_" + GroupId + clientId + "/" + imgNameArray[0] + ".txt");
-            file.createNewFile();
+            if ( !file.createNewFile() ) {
+                System.out.println("File already exists.");
+            }
             FileWriter fw = new FileWriter(file);
             fw.write(description + " " + imgNameGiven);
             fw.close();
@@ -153,7 +155,7 @@ public class ClientHandler extends Thread {
             // update profile.txt
             FileWriter proFileServerWriter = new FileWriter("server/profiles/" + "Profile_" + GroupId + clientId + ".txt", true);
             proFileServerWriter.append("\n");
-            proFileServerWriter.append(clientId + " posted " + imgNameGiven);
+            proFileServerWriter.append(clientId).append(" posted ").append(imgNameGiven);
             proFileServerWriter.close();
 
 
@@ -185,30 +187,28 @@ public class ClientHandler extends Thread {
 
             try {
                 BufferedReader reader = new BufferedReader(new FileReader("server/profiles/Profile_" + GroupId + clientId + ".txt"));
-                if (reader != null) {
-                    String line;
+                String line;
 
-                    while ((line = reader.readLine()) != null) {
+                while ((line = reader.readLine()) != null) {
 
-                        String photoFullName = (line.split(" "))[2];
-                        if (photoFullName.contains(searcImgName)) {
+                    String photoFullName = (line.split(" "))[2];
+                    if (photoFullName.contains(searcImgName)) {
 
-                            for (String[] result : results) {
-                                if (result[2].equals(photoFullName)) {
-                                    foundExactMatch = true;
-                                    break;
-                                }
+                        for (String[] result : results) {
+                            if (result[2].equals(photoFullName)) {
+                                foundExactMatch = true;
+                                break;
                             }
-
-                            if (!foundExactMatch) {
-                                results.add(new String[]{clientId, usersLoader.getUserName(clientId), photoFullName});
-                            }
-
-                            foundExactMatch = false;
                         }
+
+                        if (!foundExactMatch) {
+                            results.add(new String[]{clientId, usersLoader.getUserName(clientId), photoFullName});
+                        }
+
+                        foundExactMatch = false;
                     }
-                    reader.close();
                 }
+                reader.close();
 
             } catch (Exception e) {
                 System.out.println(e.getMessage());
@@ -235,7 +235,7 @@ public class ClientHandler extends Thread {
             // update profile.txt
             FileWriter proFileServerWriter = new FileWriter("server/profiles/" + "Profile_" + GroupId + clientId + ".txt", true);
             proFileServerWriter.append("\n");
-            proFileServerWriter.append(clientId + " reposted " + imageName);
+            proFileServerWriter.append(clientId).append(" reposted ").append(imageName);
             proFileServerWriter.close();
 
             // 9.h ------
@@ -429,14 +429,14 @@ public class ClientHandler extends Thread {
                     System.out.println(receivedAcknowledgements);
                 } else {
                     if (i != 9) {
+                        // resend
                         if (ackObj instanceof String ack && receivedAcknowledgements.contains(ack)) {
-                            System.out.println("I reiceved a duplicate ACK. Ignored. -> " + ack);
+                            System.out.println("I received a duplicate ACK. Ignored. -> " + ack);
                             ignoreNext = true;
-                            i--; //run again and dont send a new packet
                         } else {
                             System.out.println("Invalid ACK. Resending packet " + i);
-                            i--; // resend
                         }
+                        i--; //run again and don't send a new packet
                     } else {
                         break;
                     }
@@ -475,7 +475,7 @@ public class ClientHandler extends Thread {
         // read input from client
         String userToFollow = (String) inStream.readObject();
         String userToFollowId = usersLoader.getUserId(userToFollow);
-        if (userToFollowId.equals("")){
+        if (userToFollowId.isEmpty()){
             response = "User not found! Try again.";
         }else{
             ArrayList<String> userIdStructure = new ArrayList<String>();
@@ -502,7 +502,7 @@ public class ClientHandler extends Thread {
 
         outStream.writeObject(notifications);
 
-        //All notfications have been read. We empty the notifications.txt file
+        //All notifications have been read. We empty the notifications.txt file
         try (FileWriter writer = new FileWriter(notificationsPath, false)) {
             // Nothing to write – this will truncate the file to zero length
         } catch (IOException e) {
@@ -516,7 +516,6 @@ public class ClientHandler extends Thread {
             for (String notification : notifications) {
                 responses.add((String) inStream.readObject());
             }
-            //_________Exoume gemisei to responses kai prepei kati na to kanoume
 
             String[] splitResponse = {"", ""};
             ArrayList<String> acceptFrom = new ArrayList<String>();

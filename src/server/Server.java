@@ -10,7 +10,7 @@ public class Server {
     private ObjectOutputStream out;
     private ObjectInputStream in;
     
-    private int port;
+    private final int port;
 
     public Server(int port) {
         this.port = port;

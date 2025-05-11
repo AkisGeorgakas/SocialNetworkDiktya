@@ -94,7 +94,6 @@ public class Client {
             out.writeObject(actionCode);
             out.flush();
 
-            // System.out.println("egrapsa action code ston server");
             switch (actionCode) {
               case "1":
                   uploadPic();
@@ -137,7 +136,7 @@ public class Client {
 
     private void uploadPic() throws IOException, ClassNotFoundException {
         if(uploadHandshake()) {
-            // System.out.println("ksekinhsa upload");
+
             String pathname = "";
             String pathNameClean = "";
 
@@ -172,7 +171,7 @@ public class Client {
             // Create a txt with description given
             File file = new File("client/directory/" + pathNameClean + ".txt");
 
-            if (!file.createNewFile()) {
+            if ( !file.createNewFile() ) {
                 System.out.println("File already exists.");
             }
 
@@ -251,6 +250,7 @@ public class Client {
         out.writeObject(searchImgInput);
         out.flush();
 
+        @SuppressWarnings("unchecked")
         ArrayList<String[]> results = (ArrayList<String[]>)in.readObject();
         int counter = 1;
 
@@ -400,7 +400,7 @@ public class Client {
     private void downloadSomething(String imgName) throws IOException, ClassNotFoundException, InterruptedException {
 
         Map<Integer, byte[]> receivedPackets = new TreeMap<>();
-        ArrayList<Integer> receivedPacketseqNums = new ArrayList<Integer>();
+        ArrayList<Integer> receivedPacketseqNums = new ArrayList<>();
 
 
         // for the occasion of 9.e
@@ -479,7 +479,9 @@ public class Client {
 
         // Create txt with description given
         File file = new File("client/directory/" + imgName.split("\\.")[0] + ".txt");
-        file.createNewFile();
+        if ( !file.createNewFile() ) {
+            System.out.println("File already exists.");
+        }
         FileWriter fw = new FileWriter(file);
         fw.write(description + " " + imgName);
         fw.close();
@@ -487,7 +489,7 @@ public class Client {
         // update profile.txt
         FileWriter proFileServerWriter = new FileWriter("client/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
         proFileServerWriter.append("\n");
-        proFileServerWriter.append(clientId + " posted " + imgName);
+        proFileServerWriter.append(clientId).append(" posted ").append(imgName);
         proFileServerWriter.close();
 
         fos.write(imageBytes);
@@ -505,7 +507,7 @@ public class Client {
             System.out.println("\nEnter the username of a user you want to follow");
             userToFollow = myObj.nextLine();
 
-            if(userToFollow != null && userToFollow.length() > 0){
+            if(userToFollow != null && !userToFollow.isEmpty()){
                 break;
             }else{
                 System.out.println("\nWrong input! Please insert a valid username:");
@@ -522,6 +524,7 @@ public class Client {
     private void checkNotifications() throws IOException, ClassNotFoundException {
 
         // Notification Format: "sender's clientId"
+        @SuppressWarnings("unchecked")
         ArrayList<String> notifications = (ArrayList<String>)in.readObject();
         String action = "";
         if(notifications.isEmpty()){
@@ -551,7 +554,9 @@ public class Client {
                 if(f.isDirectory()) {
                     emptyFolder(f);
                 } else {
-                    f.delete();
+                    if ( !f.delete() ){
+                        System.out.println("Failed to delete file.");
+                    }
                 }
             }
         }

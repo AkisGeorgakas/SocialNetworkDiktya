@@ -14,7 +14,7 @@ public class UsersLoader {
         this.filepath = filepath;
     }
 
-    private void loadUsers() throws IOException {
+    private void loadUsers() {
         try  {
             BufferedReader reader = new BufferedReader(new FileReader(filepath));
             String line;
@@ -45,18 +45,18 @@ public class UsersLoader {
         }
     }
 
-    public List<String> getUserInfo(String username) throws IOException {
+    public List<String> getUserInfo(String username) {
         loadUsers();
         return users.getOrDefault(username, new ArrayList<>());
     }
 
-    public Set<String> getAllUsers() throws IOException {
+    public Set<String> getAllUsers() {
         loadUsers();
         return users.keySet();
     }
 
     // return clientId
-    public String checkUser(String username, String password) throws IOException {
+    public String checkUser(String username, String password) {
         loadUsers();
         List<String> infoToCheck = users.get(username);
         if (infoToCheck != null && Objects.equals(password, infoToCheck.getFirst())) {
@@ -81,14 +81,14 @@ public class UsersLoader {
         }
     }
 
-    public void printUsers() throws IOException {
+    public void printUsers() {
         loadUsers();
         for (String user : users.keySet()) {
             System.out.println(user + " has info: " + users.get(user));
         }
     }
 
-    public String getUserName(String userId) throws IOException {
+    public String getUserName(String userId) {
       loadUsers();
         for (HashMap.Entry<String, List<String>> user : users.entrySet()) {
 
@@ -102,7 +102,7 @@ public class UsersLoader {
   }
 
   //Look for a username and return it's userid
-    public String getUserId(String userName) throws IOException {
+    public String getUserId(String userName) {
         loadUsers();
         for (HashMap.Entry<String, List<String>> user : users.entrySet()) {
 
