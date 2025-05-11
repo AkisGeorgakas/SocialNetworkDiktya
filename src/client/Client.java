@@ -1,7 +1,6 @@
 package client;
 
 import common.Packet;
-import server.SocialGraphLoader;
 
 import java.net.*;
 import java.io.*;
@@ -19,14 +18,14 @@ public class Client {
     private ObjectInputStream in;
 
     private Socket connection;
-    private String serverIP;
+    private final String serverIP;
     
-    private int serverPort;
+    private final int serverPort;
 
     private boolean loginFlag = false;
     private boolean menuFlag = false;
 
-    private Scanner myObj = new Scanner(System.in);
+    private final Scanner myObj = new Scanner(System.in);
 
     private final String GroupId = "45";
 
@@ -106,6 +105,7 @@ public class Client {
                   break;
               case "3":
                   //Follow
+                  follow();
                   break;
               case "4":
                   //See your Social Graph
@@ -171,7 +171,11 @@ public class Client {
 
             // Create a txt with description given
             File file = new File("client/directory/" + pathNameClean + ".txt");
-            file.createNewFile();
+
+            if (!file.createNewFile()) {
+                System.out.println("File already exists.");
+            }
+
             FileWriter fw = new FileWriter(file);
             fw.write(description + " " + pathname);
             fw.close();
@@ -216,10 +220,10 @@ public class Client {
             // update profile.txt
             FileWriter proFileServerWriter = new FileWriter("client/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
             proFileServerWriter.append("\n");
-            proFileServerWriter.append(clientId + " posted " + pathname);
+            proFileServerWriter.append(clientId).append(" posted ").append(pathname);
             proFileServerWriter.close();
         }else{
-            System.out.println("\nHanshake Failed! Try again :(");
+            System.out.println("\nHandshake Failed! Try again :(");
         }
     }
 
@@ -235,7 +239,7 @@ public class Client {
             System.out.println("\nEnter file you want to search:");
             searchImgInput = myObj.nextLine();
 
-            if(searchImgInput != null && searchImgInput.length() > 0){
+            if(searchImgInput != null && !searchImgInput.isEmpty()){
                 break;
             }else{
                 System.out.println("\nWrong input! Please insert a valid filename:");
@@ -426,7 +430,7 @@ public class Client {
             // for the occasion of 9.e
             if(i == 2 && !firstTime3rdPackage){
 
-                System.out.println("Didn't send package on porpuse");
+                System.out.println("Didn't send package on purpose");
                 firstTime3rdPackage = true;
                 // i--;
             }
@@ -493,9 +497,31 @@ public class Client {
         System.out.println("The transmission is completed!");
     }
 
+    private void follow() throws IOException, ClassNotFoundException {
+        String userToFollow = "";
+
+        // check input filename
+        while(true){
+            System.out.println("\nEnter the username of a user you want to follow");
+            userToFollow = myObj.nextLine();
+
+            if(userToFollow != null && userToFollow.length() > 0){
+                break;
+            }else{
+                System.out.println("\nWrong input! Please insert a valid username:");
+            }
+        }
+
+        // send client's input to the server
+        out.writeObject(userToFollow);
+        out.flush();
+
+        System.out.println((String)in.readObject());
+    }
+
     private void checkNotifications() throws IOException, ClassNotFoundException {
 
-        // Notification Format: "senderId"
+        // Notification Format: "sender's clientId"
         ArrayList<String> notifications = (ArrayList<String>)in.readObject();
         String action = "";
         if(notifications.isEmpty()){
@@ -503,6 +529,7 @@ public class Client {
         }else{
             System.out.println("You have "+notifications.size() + " notifications.\n");
             for (String notification : notifications) {
+
                 System.out.println("User " + notification + " wants to follow you.");
                 System.out.println("Would you like to: \n1) Accept, \n2) Reject,\n3) Accept and follow back");
                 action = myObj.nextLine();
@@ -510,6 +537,7 @@ public class Client {
                     System.out.println("Wrong Input!\nPlease insert a valid action number from 1-3 to continue:");
                     action = myObj.nextLine();
                 }
+                //Output Format: " "action" " " "sender's clientId" "
                 out.writeObject(action + " " + notification);
             }
 

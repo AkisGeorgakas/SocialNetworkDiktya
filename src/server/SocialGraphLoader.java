@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class SocialGraphLoader {
@@ -59,7 +61,6 @@ public class SocialGraphLoader {
                     return parts;
                 }
             }
-            reader.close();
         }
         return null;
     }
@@ -97,4 +98,48 @@ public class SocialGraphLoader {
             System.out.println(user + " follows " + graph.get(user));
         }
     }
+
+    public void acceptFollowRequests(String clientId, ArrayList<String> acceptFrom) throws IOException {
+        List<String> lines = Files.readAllLines(Paths.get(socialGraphPath));
+        List<String> updatedLines = new ArrayList<>();
+
+//Thewrhtika auto prosthetei autous pou me akolouthhsan sthn grammh mou
+        boolean updated = false;
+        for (String line : lines) {
+            String[] parts = line.trim().split("\\s+");
+
+            if (parts.length > 0 && parts[0].equals(clientId)) {
+
+                for(String followerID : acceptFrom) {
+                    // Check if follower already exists to avoid duplicates
+                    boolean alreadyFollowed = Arrays.asList(parts).contains(followerID);
+                    if (!alreadyFollowed) {
+                        line += " " + followerID;
+                    }
+                    updated = true;
+
+                }
+            }
+            updatedLines.add(line);
+        }
+
+        // If the targetClientID was not found, optionally add it as a new line
+
+        if (!updated) {
+            String newLine = clientId;
+            for(String followerID : acceptFrom){
+                newLine += " " + followerID;
+            }
+            updatedLines.add(newLine);
+        }
+
+        // Rewrite the file
+        Files.write(Paths.get(socialGraphPath), updatedLines);
+
+    }
+
+    public void sendFollowRequests(String clientId,ArrayList<String> sendTo) {
+
+    }
+
 }

@@ -12,12 +12,12 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TreeMap;
 
 public class ClientHandler extends Thread {
-    private Socket clientSocket;
+    private final Socket clientSocket;
     private UsersLoader usersLoader = new UsersLoader("../data/users.txt");
+    SocialGraphLoader socialLoader = new SocialGraphLoader();
 
     private ObjectInputStream inStream;
     private ObjectOutputStream outStream;
@@ -81,6 +81,14 @@ public class ClientHandler extends Thread {
                         handleSearch();
                         break;
                     case "3":
+                        handleFollow();
+                        break;
+                    case "4":
+
+                        break;
+
+                    case "5":
+                        //Exit
                         menuFlag = true;
                         break;
                 }
@@ -165,7 +173,7 @@ public class ClientHandler extends Thread {
         // read input from client
         String searcImgName = (String) inStream.readObject();
 
-        SocialGraphLoader socialLoader = new SocialGraphLoader();
+
         ArrayList<String> following = socialLoader.getFollowing(clientId);
 
         System.out.println("Following: " + following);
@@ -462,6 +470,23 @@ public class ClientHandler extends Thread {
         }
     }
 
+    private void handleFollow() throws IOException, ClassNotFoundException {
+        String response = "";
+        // read input from client
+        String userToFollow = (String) inStream.readObject();
+        String userToFollowId = usersLoader.getUserId(userToFollow);
+        if (userToFollowId.equals("")){
+            response = "User not found! Try again.";
+        }else{
+            ArrayList<String> userIdStructure = new ArrayList<String>();
+            userIdStructure.add(userToFollowId);
+            sendFollowRequests(clientId,userIdStructure);
+            response = "Follow request sent successfully!";
+        }
+        outStream.writeObject(response);
+
+    }
+
     private void checkNotifications() throws IOException, ClassNotFoundException {
 
         ArrayList<String> notifications = new ArrayList<String>();
@@ -474,7 +499,16 @@ public class ClientHandler extends Thread {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
         outStream.writeObject(notifications);
+
+        //All notfications have been read. We empty the notifications.txt file
+        try (FileWriter writer = new FileWriter(notificationsPath, false)) {
+            // Nothing to write – this will truncate the file to zero length
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
 
         ArrayList<String> responses = new ArrayList<String>();
 
@@ -482,8 +516,45 @@ public class ClientHandler extends Thread {
             for (String notification : notifications) {
                 responses.add((String) inStream.readObject());
             }
+            //_________Exoume gemisei to responses kai prepei kati na to kanoume
+
+            String[] splitResponse = {"", ""};
+            ArrayList<String> acceptFrom = new ArrayList<String>();
+            ArrayList<String> sendTo = new ArrayList<String>();
+
+            for (String response : responses) {
+                splitResponse = response.split(" ");
+                switch (splitResponse[0]) {
+                    case "1":
+                        acceptFrom.add(splitResponse[1]);
+                        break;
+                    case "2":
+                        break;
+                    case "3":
+                        acceptFrom.add(splitResponse[1]);
+                        sendTo.add(splitResponse[1]);
+                        break;
+                }
+            }
+
+            socialLoader.acceptFollowRequests(clientId,acceptFrom);
+            sendFollowRequests(clientId,sendTo);
+            responses.clear();
         }
-        //_________Exoume gemisei to responses kai prepei kati na to kanoume
 
     }
+
+    private void sendFollowRequests(String clientId, ArrayList<String> sendTo){
+        for (String sendToId : sendTo){
+            String filePath = "server/directories/directory_" + GroupId + sendToId + "/notifications.txt";
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
+                writer.write(clientId);
+                writer.newLine();
+            } catch (IOException e) {
+                System.err.println("Failed to write to " + filePath);
+            }
+        }
+    }
+
+
 }

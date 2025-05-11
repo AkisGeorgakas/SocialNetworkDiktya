@@ -100,4 +100,18 @@ public class UsersLoader {
         }
         return "";
   }
+
+  //Look for a username and return it's userid
+    public String getUserId(String userName) throws IOException {
+        loadUsers();
+        for (HashMap.Entry<String, List<String>> user : users.entrySet()) {
+
+            String tempClientName =  user.getKey();
+            if(tempClientName.equals(userName)){
+                return user.getValue().getLast();
+            }
+
+        }
+        return "";
+    }
 }
