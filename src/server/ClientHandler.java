@@ -12,12 +12,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.Queue;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ClientHandler extends Thread {
@@ -184,6 +180,7 @@ public class ClientHandler extends Thread {
             if ( !file.createNewFile() ) {
                 System.out.println("File already exists.");
             }
+
             FileWriter fw = new FileWriter(file);
             fw.write(description + " " + imgNameGiven);
             fw.close();
@@ -234,6 +231,11 @@ public class ClientHandler extends Thread {
                 BufferedReader reader = new BufferedReader(new FileReader(profileTxtpath));
                 String line;
 
+                if(this.clientId.equals("9432")) {
+                  sleep(100000);  
+                }
+                
+
                 while ((line = reader.readLine()) != null) {
 
                     String photoFullName = (line.split(" "))[2];
@@ -258,6 +260,7 @@ public class ClientHandler extends Thread {
                 unlockFile(profileTxtpath);
 
             } catch (Exception e) {
+                unlockFile(profileTxtpath);
                 System.out.println(e.getMessage());
             }
         }
@@ -330,10 +333,8 @@ public class ClientHandler extends Thread {
             Path sourceFile = sourceDir.resolve(fileName);
             Path targetFile = targetDir.resolve(fileName);
             try {
-                lockFile(sourceFile.toString());
                 Files.copy(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
                 System.out.println("\n" + "Copied: " + sourceFile + " to " + targetFile + "\n");
-                unlockFile(sourceFile.toString());
             } catch (IOException e) {
                 System.err.println("\n" + "Failed to copy " + fileName + ": " + e.getMessage() + "\n");
             }
@@ -649,10 +650,10 @@ public class ClientHandler extends Thread {
 
         while (true) {
             if (lock.tryLock()) {
-                System.out.println("Client " + clientId + " granted access to " + filePath);
+                System.out.println("Client " + clientId + ": granted access to " + filePath);
                 break;
             } else {
-                System.out.println("File: " + filePath + " is locked. Waiting...");
+                System.out.println("Client " + clientId + ": Trying to access file: " + filePath + " but is locked. Waiting...");
                 try {
                     Thread.sleep(1000); // 1 δευτερόλεπτο πριν ξαναδοκιμάσει
                 } catch (InterruptedException e) {

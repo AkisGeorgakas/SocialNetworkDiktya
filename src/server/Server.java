@@ -1,33 +1,12 @@
 package server;
 
 import java.net.*;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.locks.ReentrantLock;
 import java.io.*;
 
 public class Server {
-
-
-    // // Μοναδικό lock ανά αρχείο
-    // public static ConcurrentHashMap<String, ReentrantLock> fileLocks = new ConcurrentHashMap<>();
-    // public static ConcurrentHashMap<String, Queue<String>> fileAccessQueues = new ConcurrentHashMap<>();
-    // public static ConcurrentHashMap<String, ScheduledFuture<?>> fileTimers = new ConcurrentHashMap<>();
-    // public static ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
-
-
-
-
-
-
-
-
-
-
 
     // Χάρτης clientID → SocketAddress (IP + port)
     public static ConcurrentHashMap<String, SocketAddress> clientDirectory = new ConcurrentHashMap<>();
