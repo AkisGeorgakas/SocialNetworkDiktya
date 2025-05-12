@@ -17,34 +17,6 @@ public class SocialGraphLoader {
         this.graph = new HashMap<>();
     }
 
-    // TODO: to be removed
-    private void loadGraph() throws IOException {
-        try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.trim().split(":");
-
-                if(parts.length >= 1) {
-                    String user = parts[0].trim();
-                    List<String> follows = new ArrayList<>();
-
-                    if (parts.length > 1 && !parts[1].trim().isEmpty()) {
-                        String[] followArray = parts[1].split(",");
-                        for (String f : followArray) {
-                            follows.add(f.trim());
-                        }
-                    }
-    
-                    graph.put(user, follows);
-                }
-                else {
-                    System.out.println("Empty line.");
-                }
-            }
-        }
-    }
-
     // returns String[] of the people that follow given client
     public String[] getFollowers(String clientId) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
@@ -86,19 +58,6 @@ public class SocialGraphLoader {
         }
     }
 
-    // TODO: to be removed
-    public Set<String> getAllUsers() {
-        return graph.keySet();
-    }
-
-    
-    // TODO: to be removed
-    public void printGraph() {
-        for (String user : graph.keySet()) {
-            System.out.println(user + " follows " + graph.get(user));
-        }
-    }
-
     public void acceptFollowRequests(String clientId, ArrayList<String> acceptFrom) throws IOException {
 
         Path path = Paths.get(socialGraphPath);
@@ -111,6 +70,9 @@ public class SocialGraphLoader {
 
             if (parts.length > 0 && parts[0].equals(clientId)) {
 
+                // check if the targetClientID was found
+                updated = true;
+
                 StringBuilder lineBuilder = new StringBuilder(line);
                 for(String followerID : acceptFrom) {
                     // Check if follower already exists to avoid duplicates
@@ -118,7 +80,6 @@ public class SocialGraphLoader {
                     if (!alreadyFollowed) {
                         lineBuilder.append(" ").append(followerID);
                     }
-                    updated = true;
 
                 }
                 line = lineBuilder.toString();
@@ -142,4 +103,34 @@ public class SocialGraphLoader {
     }
 
 
+    public String unfollowUser(String clientId, String unfollowedId) throws IOException {
+        Path path = Paths.get(socialGraphPath);
+        List<String> lines = Files.readAllLines(path);
+        List<String> updatedLines = new ArrayList<>();
+
+        boolean userFound = false;
+
+        for (String line : lines) {
+            String[] parts = line.trim().split("\\s+");
+
+            if (parts.length > 0 && parts[0].equals(unfollowedId)) {
+
+                userFound = true;
+                String newLine = line.replace(" " + clientId, "");
+                line = newLine;
+
+            }
+            updatedLines.add(line);
+        }
+
+        if(userFound) {
+            // Rewrite the file
+            Files.write(path, updatedLines);  
+            return "Unfollow completed successfully!";
+        }else{
+            return "The user you are trying to unfollow does not exist! Try again.";
+        }
+        
+
+    }
 }

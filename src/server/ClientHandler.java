@@ -12,7 +12,13 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Queue;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ClientHandler extends Thread {
     private final Socket clientSocket;
@@ -27,6 +33,9 @@ public class ClientHandler extends Thread {
 
     private String clientId;
     private final String GroupId = "45";
+
+    // Map με locks ανά αρχείο
+    private static final ConcurrentHashMap<String, ReentrantLock> fileLocks = new ConcurrentHashMap<>();
 
     public ClientHandler(Socket socket) throws IOException {
         this.clientSocket = socket;
@@ -60,7 +69,7 @@ public class ClientHandler extends Thread {
 
                     case "3":
                         // Exit
-                        loginFlag = true;
+                        this.stopClientHandler();
                         break;
 
                 }
@@ -84,20 +93,47 @@ public class ClientHandler extends Thread {
                         handleFollow();
                         break;
                     case "4":
-
+                        //social graph
                         break;
 
                     case "5":
+                        handleUnfollow();
+                        break;
+                    case "6":
                         //Exit
-                        menuFlag = true;
+                        this.stopClientHandler();
+                        break;
+                    default:
+                        System.out.println("Wrong input for menu action!");
                         break;
                 }
             }
 
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
+        } catch (InterruptedException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
         }
 
+    }
+
+    public void stopClientHandler() {
+      try {
+          Server.clientDirectory.remove(clientId);
+          System.out.println("\nOnline clients: ");
+          Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
+          System.out.println("");
+
+          loginFlag = true;
+          menuFlag = true;
+          inStream.close();
+          outStream.close();
+
+          System.out.println("Connection closed");
+      } catch (IOException e) {
+          System.out.println(e.getMessage());
+      }
     }
 
     // Menu option 1
@@ -152,11 +188,15 @@ public class ClientHandler extends Thread {
             fw.write(description + " " + imgNameGiven);
             fw.close();
 
+            String profileTxtpath = "server/profiles/" + "Profile_" + GroupId + clientId + ".txt";
+            lockFile(profileTxtpath);
             // update profile.txt
-            FileWriter proFileServerWriter = new FileWriter("server/profiles/" + "Profile_" + GroupId + clientId + ".txt", true);
+            FileWriter proFileServerWriter = new FileWriter(profileTxtpath, true);
             proFileServerWriter.append("\n");
             proFileServerWriter.append(clientId).append(" posted ").append(imgNameGiven);
             proFileServerWriter.close();
+
+            unlockFile(profileTxtpath);
 
 
             fos.write(imageBytes);
@@ -170,11 +210,10 @@ public class ClientHandler extends Thread {
 
 
     // Menu Option 2
-    private void handleSearch() throws IOException, ClassNotFoundException {
+    private void handleSearch() throws IOException, ClassNotFoundException, InterruptedException {
 
         // read input from client
         String searcImgName = (String) inStream.readObject();
-
 
         ArrayList<String> following = socialLoader.getFollowing(clientId);
 
@@ -183,10 +222,16 @@ public class ClientHandler extends Thread {
         ArrayList<String[]> results = new ArrayList<String[]>();
         boolean foundExactMatch = false;
 
+  
+        String profileTxtpath;
         for (String clientId : following) {
+            profileTxtpath = "server/profiles/Profile_" + GroupId + clientId + ".txt";
 
             try {
-                BufferedReader reader = new BufferedReader(new FileReader("server/profiles/Profile_" + GroupId + clientId + ".txt"));
+                
+                lockFile(profileTxtpath);
+
+                BufferedReader reader = new BufferedReader(new FileReader(profileTxtpath));
                 String line;
 
                 while ((line = reader.readLine()) != null) {
@@ -210,6 +255,8 @@ public class ClientHandler extends Thread {
                 }
                 reader.close();
 
+                unlockFile(profileTxtpath);
+
             } catch (Exception e) {
                 System.out.println(e.getMessage());
             }
@@ -221,7 +268,7 @@ public class ClientHandler extends Thread {
         handleDownload(results);
     }
 
-    private void handleDownload(ArrayList<String[]> imageInfo) throws ClassNotFoundException, IOException {
+    private void handleDownload(ArrayList<String[]> imageInfo) throws ClassNotFoundException, IOException, InterruptedException {
         if (downloadHandshake()) {
             System.out.println("Download sequence initiated");
 
@@ -232,11 +279,16 @@ public class ClientHandler extends Thread {
             String descriptionName = imageName.split("\\.")[0] + ".txt";
             downloadSomething(imageName, descriptionName, imageInfo.get(userSelectionNum)[0]);
 
+
+            lockFile("server/profiles/" + "Profile_" + GroupId + clientId + ".txt");
+
             // update profile.txt
             FileWriter proFileServerWriter = new FileWriter("server/profiles/" + "Profile_" + GroupId + clientId + ".txt", true);
             proFileServerWriter.append("\n");
             proFileServerWriter.append(clientId).append(" reposted ").append(imageName);
             proFileServerWriter.close();
+
+            unlockFile("server/profiles/" + "Profile_" + GroupId + clientId + ".txt");
 
             // 9.h ------
             String[] filesToCopy = {
@@ -278,8 +330,10 @@ public class ClientHandler extends Thread {
             Path sourceFile = sourceDir.resolve(fileName);
             Path targetFile = targetDir.resolve(fileName);
             try {
+                lockFile(sourceFile.toString());
                 Files.copy(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
                 System.out.println("\n" + "Copied: " + sourceFile + " to " + targetFile + "\n");
+                unlockFile(sourceFile.toString());
             } catch (IOException e) {
                 System.err.println("\n" + "Failed to copy " + fileName + ": " + e.getMessage() + "\n");
             }
@@ -299,8 +353,15 @@ public class ClientHandler extends Thread {
             outStream.flush();
             loginFlag = true;
 
+            // Αποθήκευση IP + port του client στον server map
+            Server.clientDirectory.put(clientId, clientSocket.getRemoteSocketAddress());
+            System.out.println("\nOnline clients: ");
+            Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
+            System.out.println("");
+
             updateClientsLocalFiles();
             checkNotifications();
+            
         } else {
             outStream.writeObject("FailedLogin");
             outStream.flush();
@@ -494,17 +555,21 @@ public class ClientHandler extends Thread {
         try (BufferedReader reader = new BufferedReader(new FileReader(notificationsPath))) {
             String line;
             while ((line = reader.readLine()) != null) {
+              if(!line.trim().equals("")){
                 notifications.add(line);
+              }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
+        // send notifications to client
         outStream.writeObject(notifications);
 
         //All notifications have been read. We empty the notifications.txt file
         try (FileWriter writer = new FileWriter(notificationsPath, false)) {
             // Nothing to write – this will truncate the file to zero length
+            // writer.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -528,6 +593,7 @@ public class ClientHandler extends Thread {
                         acceptFrom.add(splitResponse[1]);
                         break;
                     case "2":
+                        //reject
                         break;
                     case "3":
                         acceptFrom.add(splitResponse[1]);
@@ -554,6 +620,62 @@ public class ClientHandler extends Thread {
             }
         }
     }
+
+
+
+    // option 5 menu
+    private void handleUnfollow() throws ClassNotFoundException, IOException{
+        String response = "";
+
+        // read input from client
+        String userToUnFollow = (String) inStream.readObject();
+        String userToUnFollowId = usersLoader.getUserId(userToUnFollow);
+
+        if (userToUnFollowId.isEmpty()){
+            response = "The user you are trying to unfollow does not exist! Try again.";
+        }else{
+            response = socialLoader.unfollowUser(clientId, userToUnFollowId);
+        }
+        outStream.writeObject(response);
+    }
+
+
+
+    // Κλειδώνει το αρχείο με βάση το path
+    private void lockFile(String filePath) {
+
+        fileLocks.putIfAbsent(filePath, new ReentrantLock());
+        ReentrantLock lock = fileLocks.get(filePath);
+
+        while (true) {
+            if (lock.tryLock()) {
+                System.out.println("Client " + clientId + " granted access to " + filePath);
+                break;
+            } else {
+                System.out.println("File: " + filePath + " is locked. Waiting...");
+                try {
+                    Thread.sleep(1000); // 1 δευτερόλεπτο πριν ξαναδοκιμάσει
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+    // Ξεκλειδώνει το αρχείο
+    private void unlockFile(String filePath) {
+        ReentrantLock lock = fileLocks.get(filePath);
+        if (lock != null && lock.isHeldByCurrentThread()) {
+            lock.unlock();
+            System.out.println("File Unlocked: " + filePath);
+        }
+    }
+
+
+
+
+
+
 
 
 }

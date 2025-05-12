@@ -69,7 +69,7 @@ public class Client {
                 signup();
                 break;
               case "3":
-                stop();
+                stopClient();
                 break;
             }
           }
@@ -80,12 +80,12 @@ public class Client {
 
 
             System.out.println("\n****Main Menu ****");
-            System.out.println("\n1) Upload Image from Client to Server\n2) Search Image on server\n3) Follow\n4) See your Social Graph\n5) Exit");
-            System.out.println("\nPlease insert a valid action number from 1-5 to continue:");
+            System.out.println("\n1) Upload Image from Client to Server\n2) Search Image on server\n3) Follow\n4) See your Social Graph\n5) Unfollow\n6) Exit");
+            System.out.println("\nPlease insert a valid action number from 1-6 to continue:");
             String actionCode = myObj.nextLine();
 
-            while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3") || Objects.equals(actionCode, "4") || Objects.equals(actionCode, "5"))) {
-              System.out.println("Wrong Input!\nPlease insert a valid action number from 1-5 to continue:");
+            while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3") || Objects.equals(actionCode, "4") || Objects.equals(actionCode, "5") || Objects.equals(actionCode, "6"))) {
+              System.out.println("Wrong Input!\nPlease insert a valid action number from 1-6 to continue:");
               actionCode = myObj.nextLine();
             }
 
@@ -111,8 +111,13 @@ public class Client {
               break;
 
               case "5":
+                  //unfollow
+                  unfollow();
+              break;
+
+              case "6":
                   //Exit
-                  menuFlag = true;
+                  stopClient();
               break;
             }
           }
@@ -302,12 +307,15 @@ public class Client {
   }
 
 
-    public void stop() {
+    public void stopClient() {
         try {
+            // todo remove cleint from clientdirecotry
+            myObj.close();
+            loginFlag = true;
+            menuFlag = true;
             in.close();
             out.close();
             connection.close();
-            loginFlag = true;
 
             System.out.println("Connection closed");
         } catch (IOException e) {
@@ -338,7 +346,7 @@ public class Client {
         clientId = (String) in.readObject();
 
         System.out.println("\nSuccessful login!\n");
-        System.out.println("Welcome client " + clientId + "\n");
+        System.out.println("Welcome client " + clientId + ".\n");
         loginFlag = true;
         updateLocalFiles();
         checkNotifications();
@@ -546,6 +554,33 @@ public class Client {
 
         }
     }
+
+
+
+    //option 5 menu
+    private void unfollow() throws IOException, ClassNotFoundException {
+        String userToUnFollow = "";
+
+        // check input filename
+        while(true){
+            System.out.println("\nEnter the username of a user you want to unfollow.");
+            userToUnFollow = myObj.nextLine();
+
+            if(userToUnFollow != null && !userToUnFollow.isEmpty()){
+                break;
+            }else{
+                System.out.println("\nWrong input! Please insert a valid username:");
+            }
+        }
+
+        // send client's unfollow input to the server
+        out.writeObject(userToUnFollow);
+        out.flush();
+
+        System.out.println("\n" + (String)in.readObject());
+    }
+
+
 
     public static void emptyFolder(File folder) {
         File[] files = folder.listFiles();

@@ -3,8 +3,6 @@ bob:kwdikos,6534
 charlie:pass567,9299
 diana:kwdikos3,8512
 eric:password123,5566
-charlie:pass567,9299
-diana:kwdikos3,8512
 eric:password123,5566
 aggie:cupcake,0394
 billy:billy,9432

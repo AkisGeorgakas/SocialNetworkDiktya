@@ -8,7 +8,6 @@ javac ^
     src\server\Server.java ^
     src\server\SocialGraphLoader.java ^
     src\server\UsersLoader.java ^
-    src\ServerMain.java ^
 	src\common\Packet.java
 
 IF %ERRORLEVEL% EQU 0 (
