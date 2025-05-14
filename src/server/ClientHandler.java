@@ -140,12 +140,11 @@ public class ClientHandler extends Thread {
             Map<Integer, byte[]> receivedPackets = new TreeMap<>();
 
             String imgNameGiven = (String) inStream.readObject();
+            System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(filename)");
             String[] imgNameArray = imgNameGiven.split("\\.");
 
             for (int i = 0; i < 10; i++) {
-                System.out.println("inside for");
                 Packet packet = (Packet) inStream.readObject();
-                System.out.println("read Object");
                 System.out.println("Received packet #" + packet.sequenceNumber);
                 receivedPackets.put(packet.sequenceNumber, packet.data);
 
@@ -232,7 +231,7 @@ public class ClientHandler extends Thread {
                 String line;
 
                 if(this.clientId.equals("9432")) {
-                  sleep(100000);  
+                  sleep(10000);
                 }
                 
 
@@ -277,6 +276,7 @@ public class ClientHandler extends Thread {
 
             // read user selection from client
             int userSelectionNum = (int) inStream.readObject();
+            System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(user selection)");
 
             String imageName = imageInfo.get(userSelectionNum)[2];
             String descriptionName = imageName.split("\\.")[0] + ".txt";
@@ -314,8 +314,10 @@ public class ClientHandler extends Thread {
     // handshake for download
     private boolean downloadHandshake() throws IOException, ClassNotFoundException {
         String handshakeResponse = (String) inStream.readObject();
+        System.out.println("HANDSHAKE STEP 1: Client sent request");
         if (handshakeResponse.equals("request to download")) {
             outStream.writeObject("acceptedDownload");
+            System.out.println("HANDSHAKE STEP 2: Server sent acknowledgement");
             return true;
         } else {
             outStream.writeObject("rejected");
@@ -488,7 +490,7 @@ public class ClientHandler extends Thread {
                 if (ackObj instanceof String ack && ack.equals("ACK" + i) && !receivedAcknowledgements.contains(ack)) {
                     System.out.println("Received: " + ack);
                     receivedAcknowledgements.add(ack);
-                    System.out.println(receivedAcknowledgements);
+
                 } else {
                     if (i != 9) {
                         // resend
@@ -519,12 +521,16 @@ public class ClientHandler extends Thread {
                 }
             }
         }
+        System.out.println("Received Acknowledgements: "+receivedAcknowledgements);
     }
 
     private boolean uploadHandshake() throws IOException, ClassNotFoundException {
+
         String handshakeResponse = (String) inStream.readObject();
+        System.out.println("HANDSHAKE STEP 1: Client sent request");
         if (handshakeResponse.equals("request to upload")) {
             outStream.writeObject("acceptedUpload");
+            System.out.println("HANDSHAKE STEP 2: Server sent acknowledgement");
             return true;
         } else {
             outStream.writeObject("rejected");
@@ -591,12 +597,15 @@ public class ClientHandler extends Thread {
                 splitResponse = response.split(" ");
                 switch (splitResponse[0]) {
                     case "1":
+                        System.out.println("Client " + clientId + " accepted follow request from " + splitResponse[1]);
                         acceptFrom.add(splitResponse[1]);
                         break;
                     case "2":
                         //reject
+                        System.out.println("Client " + clientId + " rejected follow request from " + splitResponse[1]);
                         break;
                     case "3":
+                        System.out.println("Client " + clientId + " accepted and sent back follow request from " + splitResponse[1]);
                         acceptFrom.add(splitResponse[1]);
                         sendTo.add(splitResponse[1]);
                         break;
@@ -636,6 +645,7 @@ public class ClientHandler extends Thread {
             response = "The user you are trying to unfollow does not exist! Try again.";
         }else{
             response = socialLoader.unfollowUser(clientId, userToUnFollowId);
+            System.out.println("User " + clientId + " successfully unfollowed user " + userToUnFollow);
         }
         outStream.writeObject(response);
     }
@@ -655,7 +665,7 @@ public class ClientHandler extends Thread {
             } else {
                 System.out.println("Client " + clientId + ": Trying to access file: " + filePath + " but is locked. Waiting...");
                 try {
-                    Thread.sleep(1000); // 1 δευτερόλεπτο πριν ξαναδοκιμάσει
+                    Thread.sleep(2000); // 2 δευτερόλεπτα πριν ξαναδοκιμάσει
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }

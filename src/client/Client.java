@@ -43,6 +43,7 @@ public class Client {
           out = new ObjectOutputStream(connection.getOutputStream());
           in = new ObjectInputStream(connection.getInputStream());
 
+          System.out.println("Connection Established!");
           out.writeObject("Established connection with server!");
           out.flush();
 
@@ -135,7 +136,9 @@ public class Client {
 
     private boolean uploadHandshake() throws IOException, ClassNotFoundException {
         out.writeObject("request to upload");
+        System.out.println("HANDSHAKE STEP 1: Client sent request");
         String handshakeResponse = (String) in.readObject();
+        System.out.println("HANDSHAKE STEP 2: Server sent acknowledgement");
         return handshakeResponse.equals("acceptedUpload");
     }
 
@@ -163,6 +166,7 @@ public class Client {
             pathNameClean = pathname.split("\\.")[0];
             // send server img name
             out.writeObject(pathname);
+            System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(filename)");
 
             // Load image and description
             String fullpathname = "client/directory/" + pathname;
@@ -283,10 +287,7 @@ public class Client {
 
         }else{
             System.out.println("No results found :(");
-
         }
-
-
     }
 
     private void downloadPic(int userSelectionNum, String[] imageInfo) throws ClassNotFoundException, IOException, InterruptedException {
@@ -295,6 +296,7 @@ public class Client {
       if(downloadHandshake()) {
         // send server user picture selection
         out.writeObject(userSelectionNum);
+          System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(user selection)");
 
         downloadSomething(imageInfo[2]);
       }
@@ -302,7 +304,9 @@ public class Client {
 
     private boolean downloadHandshake() throws IOException, ClassNotFoundException {
       out.writeObject("request to download");
+      System.out.println("HANDSHAKE STEP 1: Client sent request");
       String handshakeResponse = (String) in.readObject();
+        System.out.println("HANDSHAKE STEP 2: Server sent acknowledgement");
       return handshakeResponse.equals("acceptedDownload");
   }
 
@@ -341,7 +345,6 @@ public class Client {
       String response = (String) in.readObject();
 
       if(response.equals("SuccessLogin")){
-        
         // update local clientId variable
         clientId = (String) in.readObject();
 
@@ -350,13 +353,11 @@ public class Client {
         loginFlag = true;
         updateLocalFiles();
         checkNotifications();
-
       }else{
 
         System.out.println("\nFailed login! Username or password is incorrect.\nPlease try again.\n");
         this.login();
       }
-
     }
 
     public void signup() throws IOException, ClassNotFoundException {
@@ -379,7 +380,6 @@ public class Client {
         if(response.equals("SuccessSignUp")){
 
             clientId = (String) in.readObject();
-
             System.out.println("\nSuccessful sign up!\nYou are now logged in.\n");
             loginFlag = true;
 
@@ -409,8 +409,6 @@ public class Client {
 
         Map<Integer, byte[]> receivedPackets = new TreeMap<>();
         ArrayList<Integer> receivedPacketseqNums = new ArrayList<>();
-
-
         // for the occasion of 9.e
         boolean firstTime3rdPackage = false;
         // for the occasion of 9.f
@@ -423,7 +421,6 @@ public class Client {
         for (int i = 0; i < 10; i++) {
 
             Packet packet = (Packet) in.readObject();
-
             System.out.println("Received packet #" + packet.sequenceNumber);
             if(!receivedPacketseqNums.contains(packet.sequenceNumber)){
                 receivedPacketseqNums.add(packet.sequenceNumber);
@@ -437,7 +434,6 @@ public class Client {
 
             // for the occasion of 9.e
             if(i == 2 && !firstTime3rdPackage){
-
                 System.out.println("Didn't send package on purpose");
                 firstTime3rdPackage = true;
                 // i--;
@@ -454,14 +450,11 @@ public class Client {
                 out.flush();
 
                 firstTime6thPackage = true;
-
             }else{
                 // Send ACK
                 out.writeObject(("ACK" + packet.sequenceNumber));
                 out.flush();
             }
-
-
         }
 
         // Reconstruct the image and description
@@ -548,9 +541,22 @@ public class Client {
                     System.out.println("Wrong Input!\nPlease insert a valid action number from 1-3 to continue:");
                     action = myObj.nextLine();
                 }
+                switch (action) {
+                    case "1":
+                        System.out.println("Follow request accepted.");
+                        break;
+                    case "2":
+                        System.out.println("Follow request rejected.");
+                        break;
+                    case "3":
+                        System.out.println("Follow request accepted and followed back.");
+                        break;
+                }
+
                 //Output Format: " "action" " " "sender's clientId" "
                 out.writeObject(action + " " + notification);
             }
+            System.out.println("No more notifications to check.");
 
         }
     }
