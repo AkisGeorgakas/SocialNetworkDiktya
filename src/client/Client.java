@@ -292,7 +292,6 @@ public class Client {
 
     private void downloadPic(int userSelectionNum, String[] imageInfo) throws ClassNotFoundException, IOException, InterruptedException {
 
-        //TODO: Check if this image is already in my directory
       if(downloadHandshake()) {
         // send server user picture selection
         out.writeObject(userSelectionNum);
@@ -313,7 +312,6 @@ public class Client {
 
     public void stopClient() {
         try {
-            // todo remove cleint from clientdirecotry
             myObj.close();
             loginFlag = true;
             menuFlag = true;
@@ -362,8 +360,6 @@ public class Client {
 
     public void signup() throws IOException, ClassNotFoundException {
 
-        // todo directories
-        // todo create profiles 
         System.out.println("Create a username:");
         String userName = myObj.nextLine();
 

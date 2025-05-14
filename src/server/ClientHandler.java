@@ -105,11 +105,8 @@ public class ClientHandler extends Thread {
                 }
             }
 
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (IOException | ClassNotFoundException | InterruptedException e) {
             e.printStackTrace();
-        } catch (InterruptedException e) {
-          // TODO Auto-generated catch block
-          e.printStackTrace();
         }
 
     }
@@ -119,7 +116,7 @@ public class ClientHandler extends Thread {
           Server.clientDirectory.remove(clientId);
           System.out.println("\nOnline clients: ");
           Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
-          System.out.println("");
+          System.out.println("\n");
 
           loginFlag = true;
           menuFlag = true;
