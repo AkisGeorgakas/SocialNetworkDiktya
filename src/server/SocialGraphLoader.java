@@ -10,127 +10,154 @@ import java.util.*;
 
 public class SocialGraphLoader {
   
-    private final Map<String, List<String>> graph;
-    private final String socialGraphPath = "../data/SocialGraph.txt";
+  // Social graph map
+  private final Map<String, List<String>> graph;
 
-    public SocialGraphLoader() throws IOException {
-        this.graph = new HashMap<>();
-    }
+  // Social graph path
+  private final String socialGraphPath = "../data/SocialGraph.txt";
 
-    // returns String[] of the people that follow given client
-    public String[] getFollowers(String clientId) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
-            String line;
+  // Constructor
+  public SocialGraphLoader() throws IOException {
+    this.graph = new HashMap<>();
+  }
 
-            while ((line = reader.readLine()) != null) {
-                String[] all = line.split(" ");
+  // returns String[] of the people that follow given client
+  public String[] getFollowers(String clientId) throws IOException {
 
-                if(all.length >= 1 && all[0].equals(clientId)) {
-                    String[] parts = new String[all.length - 1];
+    try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
 
-                    System.arraycopy(all, 1, parts, 0, all.length - 1);
+      String line;
 
-                    return parts;
-                }
-            }
-        }
-        return null;
-    }
+      while ((line = reader.readLine()) != null) {
+        String[] all = line.split(" ");
 
-    // returns ArrayList<String> of the people that given client follows
-    public ArrayList<String> getFollowing(String clientId) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
-            String line;
-            ArrayList<String> following = new ArrayList<>();
+        if(all.length >= 1 && all[0].equals(clientId)) {
+          String[] parts = new String[all.length - 1];
 
-            while ((line = reader.readLine()) != null) {
-                String[] all = line.split(" ");
+          System.arraycopy(all, 1, parts, 0, all.length - 1);
 
-                if(all.length >= 1 && !all[0].equals(clientId)) {
-                    for(int i=1; i<all.length; i++) {
-                        if(all[i].equals(clientId)) following.add(all[0]);
-                    }
-                }
-            }
-            reader.close();
-
-            return following;
-        }
-    }
-
-    public void acceptFollowRequests(String clientId, ArrayList<String> acceptFrom) throws IOException {
-
-        Path path = Paths.get(socialGraphPath);
-        List<String> lines = Files.readAllLines(path);
-        List<String> updatedLines = new ArrayList<>();
-
-        boolean updated = false;
-        for (String line : lines) {
-            String[] parts = line.trim().split("\\s+");
-
-            if (parts.length > 0 && parts[0].equals(clientId)) {
-
-                // check if the targetClientID was found
-                updated = true;
-
-                StringBuilder lineBuilder = new StringBuilder(line);
-                for(String followerID : acceptFrom) {
-                    // Check if follower already exists to avoid duplicates
-                    boolean alreadyFollowed = Arrays.asList(parts).contains(followerID);
-                    if (!alreadyFollowed) {
-                        lineBuilder.append(" ").append(followerID);
-                    }
-
-                }
-                line = lineBuilder.toString();
-            }
-            updatedLines.add(line);
-        }
-
-        // If the targetClientID was not found, optionally add it as a new line
-
-        if (!updated) {
-            StringBuilder newLine = new StringBuilder(clientId);
-            for(String followerID : acceptFrom){
-                newLine.append(" ").append(followerID);
-            }
-            updatedLines.add(newLine.toString());
-        }
-
-        // Rewrite the file
-        Files.write(path, updatedLines);
-
-    }
-
-
-    public String unfollowUser(String clientId, String unfollowedId) throws IOException {
-        Path path = Paths.get(socialGraphPath);
-        List<String> lines = Files.readAllLines(path);
-        List<String> updatedLines = new ArrayList<>();
-
-        boolean userFound = false;
-
-        for (String line : lines) {
-            String[] parts = line.trim().split("\\s+");
-
-            if (parts.length > 0 && parts[0].equals(unfollowedId)) {
-
-                userFound = true;
-                String newLine = line.replace(" " + clientId, "");
-                line = newLine;
-
-            }
-            updatedLines.add(line);
-        }
-
-        if(userFound) {
-            // Rewrite the file
-            Files.write(path, updatedLines);  
-            return "Unfollow completed successfully!";
-        }else{
-            return "The user you are trying to unfollow does not exist! Try again.";
+          return parts;
         }
         
+      }
 
     }
+    // If the client is not in the social graph
+    return null;
+  }
+
+  // returns ArrayList<String> of the people that given client follows
+  public ArrayList<String> getFollowing(String clientId) throws IOException {
+
+    try (BufferedReader reader = new BufferedReader(new FileReader(socialGraphPath))) {
+
+      String line;
+      ArrayList<String> following = new ArrayList<>();
+
+      while ((line = reader.readLine()) != null) {
+
+        String[] all = line.split(" ");
+
+        if(all.length >= 1 && !all[0].equals(clientId)) {
+
+          for(int i=1; i<all.length; i++) {
+            if(all[i].equals(clientId)) following.add(all[0]);
+          }
+
+        }
+
+      }
+
+      reader.close();
+
+      return following;
+    }
+  }
+
+  // Accepts follow requests
+  public void acceptFollowRequests(String clientId, ArrayList<String> acceptFrom) throws IOException {
+
+    Path path = Paths.get(socialGraphPath);
+    List<String> lines = Files.readAllLines(path);
+    List<String> updatedLines = new ArrayList<>();
+
+    boolean updated = false;
+
+    for (String line : lines) {
+
+      String[] parts = line.trim().split("\\s+");
+
+      if (parts.length > 0 && parts[0].equals(clientId)) {
+
+        // check if the targetClientID was found
+        updated = true;
+
+        StringBuilder lineBuilder = new StringBuilder(line);
+        for(String followerID : acceptFrom) {
+            // Check if follower already exists to avoid duplicates
+            boolean alreadyFollowed = Arrays.asList(parts).contains(followerID);
+            if (!alreadyFollowed) {
+                lineBuilder.append(" ").append(followerID);
+            }
+
+        }
+        
+        line = lineBuilder.toString();
+
+      }
+
+      updatedLines.add(line);
+    }
+
+    // If the targetClientID was not found, optionally add it as a new line
+    if (!updated) {
+        StringBuilder newLine = new StringBuilder(clientId);
+      for(String followerID : acceptFrom){
+          newLine.append(" ").append(followerID);
+      }
+      updatedLines.add(newLine.toString());
+    }
+
+    // Rewrite the file
+    Files.write(path, updatedLines);
+
+  }
+
+
+  // Unfollow user
+  public String unfollowUser(String clientId, String unfollowedId) throws IOException {
+
+    Path path = Paths.get(socialGraphPath);
+    List<String> lines = Files.readAllLines(path);
+    List<String> updatedLines = new ArrayList<>();
+
+    boolean userFound = false;
+
+    for (String line : lines) {
+
+      String[] parts = line.trim().split("\\s+");
+
+      if (parts.length > 0 && parts[0].equals(unfollowedId)) {
+
+        userFound = true;
+        String newLine = line.replace(" " + clientId, "");
+        line = newLine;
+
+      }
+      
+      updatedLines.add(line);
+      
+    }
+
+    if(userFound) {
+      // Rewrite the file
+      Files.write(path, updatedLines);  
+      return "Unfollow completed successfully!";
+
+    }else{
+      return "The user you are trying to unfollow does not exist! Try again.";
+    }
+      
+  }
+
 }
