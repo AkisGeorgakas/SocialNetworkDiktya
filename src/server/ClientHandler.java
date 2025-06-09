@@ -90,7 +90,11 @@ public class ClientHandler extends Thread {
         // Read menu action 
         String actionCode = (String) inStream.readObject();
         System.out.println("client.Client message: " + actionCode);
-
+// TODO Access profile functionality
+// TODO Add comment functionality
+// TODO Add ask-comment functionality
+// TODO Add ask-download functionality
+// TODO Add permit-download functionality
         switch (actionCode) {
 
           case "1":
@@ -173,6 +177,7 @@ public class ClientHandler extends Thread {
     }
   }
 
+  //TODO Create directories at signup
   private void signup() throws IOException, ClassNotFoundException {
     // Read username and password
     String userName = (String) inStream.readObject();
@@ -223,6 +228,7 @@ public class ClientHandler extends Thread {
   // MAIN MENU -----------------------------------------------------------------------------------------------------------------------------------------------
 
   // Menu option 1
+    //TODO Update Others_45____ files
   private void handleUpload() throws IOException, ClassNotFoundException {
 
     // Check handshake
@@ -329,6 +335,7 @@ public class ClientHandler extends Thread {
 
 
   // Menu Option 2
+    //TODO Add language-specific search
   private void handleSearch() throws IOException, ClassNotFoundException, InterruptedException {
 
       // read input from client
@@ -394,6 +401,7 @@ public class ClientHandler extends Thread {
       handleDownload(results);
   }
 
+  // TODO Change to GoBackN protocol
   private void handleDownload(ArrayList<String[]> imageInfo) throws ClassNotFoundException, IOException, InterruptedException {
       if (downloadHandshake()) {
           System.out.println("Download sequence initiated");
