@@ -5,6 +5,9 @@ import common.Packet;
 import java.net.*;
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
@@ -195,9 +198,10 @@ public class Client {
       System.out.println("\nSuccessful login!\n");
       System.out.println("Welcome client " + clientId + ".\n");
 
+      updateLocalFiles();
+
       loginFlag = true;
 
-      updateLocalFiles();
       checkNotifications();
 
     }else{
@@ -232,8 +236,10 @@ public class Client {
     if(response.equals("SuccessSignUp")){
 
       clientId = (String) in.readObject();
-      System.out.println("\nSuccessful sign up!\nYou are now logged in.\n");
+      System.out.println("\nSuccessful sign up!\nYou are now logged in.\nWelcome client " + clientId + ".\n");
       loginFlag = true;
+
+      fixNewUserlFiles();
 
     }else{
       System.out.println("\nFailed to sign up! Username already exists.\nPlease try different username.\n");
@@ -450,7 +456,7 @@ public class Client {
       System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(user selection)");
 
       // Download picture
-      downloadSomething(imageInfo[2]);
+      downloadSomething(imageInfo[2], false);
     }
   }
 
@@ -622,14 +628,16 @@ public class Client {
         finishedDownload = true;
 
       }else{
-        downloadSomething(fileName);
+        downloadSomething(fileName, true);
       }
     }
+
+    copyProfileFromServer();
 
   }
 
   // General function to download a file from server to client images and bind txt files
-  private void downloadSomething(String imgName) throws IOException, ClassNotFoundException, InterruptedException {
+  private void downloadSomething(String imgName, Boolean isLoginOrSignup) throws IOException, ClassNotFoundException, InterruptedException {
 
       Map<Integer, byte[]> receivedPackets = new TreeMap<>();
       ArrayList<Integer> receivedPacketseqNums = new ArrayList<>();
@@ -712,10 +720,12 @@ public class Client {
       fw.close();
 
       // update profile.txt
-      FileWriter proFileServerWriter = new FileWriter("client/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
-      proFileServerWriter.append("\n");
-      proFileServerWriter.append(clientId).append(" posted ").append(imgName);
-      proFileServerWriter.close();
+      if(!isLoginOrSignup){
+        FileWriter proFileServerWriter = new FileWriter("client/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
+        proFileServerWriter.append("\n");
+        proFileServerWriter.append(clientId).append(" posted ").append(imgName);
+        proFileServerWriter.close();
+      }
 
       fos.write(imageBytes);
       fos.close();
@@ -745,6 +755,38 @@ public class Client {
     } catch (IOException e) {
       System.out.println(e.getMessage());
     }
+
+  }
+
+
+  // Clean all client files for new user
+  private void fixNewUserlFiles(){
+
+    // Empty client directories
+    emptyFolder(new File("client/directory"));
+    emptyFolder(new File("client/profiles"));
+
+    try {
+
+      File file2 = new File("client/profiles/Profile_" + GroupId + clientId + ".txt");
+      file2.createNewFile();
+      System.out.println("File: " + file2 + " created.");
+      
+    }catch(Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+
+  private void copyProfileFromServer() throws ClassNotFoundException, IOException{
+
+    String content = (String) in.readObject();
+    Files.writeString(Paths.get("client/profiles/Profile_" + GroupId + clientId + ".txt"), content);
+    System.out.println("Received Profile_" + GroupId + clientId + ".txt");
+
+    String content2 = (String) in.readObject();
+    Files.writeString(Paths.get("client/profiles/Others_" + GroupId + clientId + ".txt"), content2);
+    System.out.println("Received Others_" + GroupId + clientId + ".txt");
 
   }
 

@@ -7,3 +7,4 @@ aggie:cupcake,0394
 billy:billy,9432
 akis:a,8493
 giorgos:password,100
+billy2:billy2,98

@@ -165,7 +165,10 @@ public class ClientHandler extends Thread {
       Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
       System.out.println("");
 
-      updateClientsLocalFiles();
+      updateClientsDirecotryFiles();
+
+      updateClientProfileFiles();
+
       checkNotifications();
         
     } else {
@@ -177,7 +180,6 @@ public class ClientHandler extends Thread {
     }
   }
 
-  //TODO Create directories at signup
   private void signup() throws IOException, ClassNotFoundException {
     // Read username and password
     String userName = (String) inStream.readObject();
@@ -205,6 +207,16 @@ public class ClientHandler extends Thread {
       // Send client ID
       outStream.writeObject(clientId);
       outStream.flush();
+
+
+
+      // Save client's IP and port to server
+      Server.clientDirectory.put(clientId, clientSocket.getRemoteSocketAddress());
+      System.out.println("\nOnline clients: ");
+      Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
+      System.out.println("");      
+
+      fixNewUserlFiles();
 
       // Stop login menu
       loginFlag = true;
@@ -535,7 +547,7 @@ public class ClientHandler extends Thread {
   // GENERAL FUNCTIONS -------------------------------------------------------------------------------------------------------------------
 
   // Sync all files from server to client
-  private void updateClientsLocalFiles() throws IOException {
+  private void updateClientsDirecotryFiles() throws IOException {
 
     System.out.println("Synchronizing files with client...");
 
@@ -822,6 +834,50 @@ public class ClientHandler extends Thread {
 
   }
 
+
+  private void fixNewUserlFiles() throws IOException{
+
+
+    System.out.println("Creating all nessecary user files...");
+
+    // File directoryFolder = new File("server/directories/directory_" + GroupId + clientId);
+    new File("server/directories/directory_" + GroupId + clientId).mkdirs();
+    // new File("server/directories/directory_" + GroupId + clientId).mkdirs();
+
+    try {
+
+      File file = new File("server/directories/directory_" + GroupId + clientId + "/notifications.txt");
+      file.createNewFile();
+      System.out.println("File: " + file + " created.");
+
+      File file2 = new File("server/profiles/Profile_" + GroupId + clientId + ".txt");
+      file2.createNewFile();
+      System.out.println("File: " + file2 + " created.");
+
+
+      File file3 = new File("server/profiles/Others_"+ GroupId + clientId + ".txt");
+      file3.createNewFile();
+      System.out.println("File: " + file3 + " created.");
+
+    }catch(Exception e) {
+      e.printStackTrace();
+    }
+
+
+  }
+
+
+  private void updateClientProfileFiles() throws IOException{
+    String sourceFile = "server/profiles/Profile_" + GroupId + clientId + ".txt";
+    String content = Files.readString(Paths.get(sourceFile));
+    outStream.writeObject(content);
+    System.out.println("Sending Profile_" + GroupId + clientId + ".txt");
+
+    String sourceFile2 = "server/profiles/Others_" + GroupId + clientId + ".txt";
+    String content2 = Files.readString(Paths.get(sourceFile2));
+    outStream.writeObject(content2);
+    System.out.println("Sending Others_" + GroupId + clientId + ".txt");
+  }
 
   // --------------------------------------------------------------------------------------------------------------------------------------
 
