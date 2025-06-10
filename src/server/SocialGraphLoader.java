@@ -2,6 +2,7 @@ package server;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -158,6 +159,25 @@ public class SocialGraphLoader {
       return "The user you are trying to unfollow does not exist! Try again.";
     }
       
+  }
+
+
+
+  public void addUser(String clientId) throws IOException{
+    FileWriter writer = null;
+
+    try{
+      writer = new FileWriter(socialGraphPath,true);
+      writer.append("\n");
+      writer.append(clientId);
+
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+
+    }finally {
+      assert writer != null;
+      writer.close();
+    }
   }
 
 }

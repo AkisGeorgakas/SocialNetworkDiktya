@@ -224,11 +224,28 @@ public class Client {
     System.out.println("\nCreate a password:");
     String password = myObj.nextLine();
 
-    // Send username and password to the server
+    // Ask for language
+    String language = "";
+    System.out.println("\nPrefered language:\n1) Greek\n2) English\nChoose a language by typing 1 or 2:");
+    while (true) {
+      String languageCode = myObj.nextLine();
+      if (Objects.equals(languageCode, "1")) {
+        language = "gr";
+        break;
+      } else if (Objects.equals(languageCode, "2")) {
+        language = "en";
+        break;
+      }
+    }
+
+    // Send username and password language to the server
     out.writeObject(userName);
     out.flush();
 
     out.writeObject(password);
+    out.flush();
+
+    out.writeObject(language);
     out.flush();
 
     // Server response for sign up
@@ -768,7 +785,11 @@ public class Client {
 
     try {
 
-      File file2 = new File("client/profiles/Profile_" + GroupId + clientId + ".txt");
+      File file = new File("client/profiles/Profile_" + GroupId + clientId + ".txt");
+      file.createNewFile();
+      System.out.println("File: " + file + " created.");
+
+      File file2 = new File("client/profiles/Others" + GroupId + clientId + ".txt");
       file2.createNewFile();
       System.out.println("File: " + file2 + " created.");
       

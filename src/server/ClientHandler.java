@@ -184,6 +184,7 @@ public class ClientHandler extends Thread {
     // Read username and password
     String userName = (String) inStream.readObject();
     String password = (String) inStream.readObject();
+    String language = (String) inStream.readObject();
 
     // Check if username already exists
     if (usersLoader.getUserInfo(userName).isEmpty()) {
@@ -197,7 +198,7 @@ public class ClientHandler extends Thread {
       clientId = tempId;
 
       // Add user to users.txt
-      String formattedInfo = userName + ":" + password + "," + clientId;
+      String formattedInfo = userName + ":" + password + "," + clientId + "," + language;
       usersLoader.addUser(formattedInfo);
 
       // Send success signup response
@@ -299,15 +300,29 @@ public class ClientHandler extends Thread {
 
       // lock profile.txt to prevent other clients from editing
       lockFile(profileTxtpath);
-
       // update profile.txt
       FileWriter proFileServerWriter = new FileWriter(profileTxtpath, true);
       proFileServerWriter.append("\n");
       proFileServerWriter.append(clientId).append(" posted ").append(imgNameGiven);
       proFileServerWriter.close();
-
       // unlock profile.txt
       unlockFile(profileTxtpath);
+
+
+      String[] following = socialLoader.getFollowers(clientId);
+      for (String myFollowing : following) {
+
+        String otherTxtpath = "server/profiles/" + "Others_" + GroupId + myFollowing + ".txt";
+        // lock others.txt to prevent other clients from editing
+        lockFile(otherTxtpath);
+        // update others.txt
+        FileWriter proFileServerWriter2 = new FileWriter(otherTxtpath, true);
+        proFileServerWriter2.append("\n");
+        proFileServerWriter2.append(clientId).append(" posted ").append(imgNameGiven);
+        proFileServerWriter2.close();
+        // unlock others.txt
+        unlockFile(otherTxtpath);
+      }
 
       // Write image
       fos.write(imageBytes);
@@ -839,11 +854,11 @@ public class ClientHandler extends Thread {
 
 
     System.out.println("Creating all nessecary user files...");
-
-    // File directoryFolder = new File("server/directories/directory_" + GroupId + clientId);
     new File("server/directories/directory_" + GroupId + clientId).mkdirs();
-    // new File("server/directories/directory_" + GroupId + clientId).mkdirs();
 
+    // add user to social graph txt
+    socialLoader.addUser(clientId);
+    
     try {
 
       File file = new File("server/directories/directory_" + GroupId + clientId + "/notifications.txt");
