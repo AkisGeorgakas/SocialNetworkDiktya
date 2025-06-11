@@ -10,9 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -84,47 +82,49 @@ public class ClientHandler extends Thread {
 
       }
 
-      // Main Menu
-      while (!menuFlag) {
+        // Main Menu
+        while (!menuFlag) {
 
-        // Read menu action 
-        String actionCode = (String) inStream.readObject();
-        System.out.println("client.Client message: " + actionCode);
-// TODO Access profile functionality
-// TODO Add comment functionality
-// TODO Add ask-comment functionality
-// TODO Add ask-download functionality
-// TODO Add permit-download functionality
-        switch (actionCode) {
+            // Read menu action
+            String actionCode = (String) inStream.readObject();
+            System.out.println("client.Client message: " + actionCode);
 
-          case "1":
-            handleUpload();
-            break;
+            // TODO Add comment functionality
+            // TODO Add ask-comment functionality
+            // TODO Add ask-download functionality
+            // TODO Add permit-download functionality
+            switch (actionCode) {
 
-          case "2":
-            handleSearch();
-            break;
+                case "1":
+                    handleUpload();
+                    break;
 
-          case "3":
-            handleFollow();
-            break;
+                case "2":
+                    handleSearch();
+                    break;
 
-          case "4":
-            handleUnfollow();
-            break;
-            
-          case "5":
-            //Exit
-            this.stopClientHandler();
-            break;
+                case "3":
+                    handleFollow();
+                    break;
 
-          default:
-            System.out.println("Wrong input for menu action!");
-            break;
+                case "4":
+                    handleUnfollow();
+                    break;
 
+                case "5":
+                    handleAccessProfile();
+                    break;
+
+                case "6":
+                    //Exit
+                    this.stopClientHandler();
+                    break;
+
+                default:
+                    System.out.println("Wrong input for menu action!");
+                    break;
+            }
         }
-
-      }
 
     } catch (IOException | ClassNotFoundException | InterruptedException e) {
       e.printStackTrace();
@@ -359,8 +359,6 @@ public class ClientHandler extends Thread {
     }
   }
 
-
-
   // Menu Option 2
     //TODO Add language-specific search
   private void handleSearch() throws IOException, ClassNotFoundException, InterruptedException {
@@ -551,7 +549,65 @@ public class ClientHandler extends Thread {
       outStream.writeObject(response);
   }
 
+    // Menu option 5
+    // Handle Access Profile
+    private void handleAccessProfile() throws IOException, ClassNotFoundException, InterruptedException {
+        boolean flag = true;
 
+        while (flag) {
+            List<String> usersList = new ArrayList<>(usersLoader.getAllUsers());
+
+            // Send to client a list of all usernames on users.txt
+            outStream.writeObject(usersList);
+            outStream.flush();
+
+            // Read the profile name client wants to access
+            String profileName = (String) inStream.readObject(); // ProfileName, client requested access
+
+            System.out.println("Client wants to access profile " + profileName);
+
+            ArrayList<String> following = socialLoader.getFollowing(clientId);
+            String selectedID = usersLoader.getUserInfo(profileName).get(1); // ProfileID, client requested access
+
+            if (following.contains(selectedID)) {
+                outStream.writeObject("access_approved");
+                outStream.flush();
+
+                //File profileFile = new File("server/profiles/Profile_" + GroupId + selectedID);
+
+                String content = Files.readString(Paths.get("server/profiles/Profile_" + GroupId + selectedID + ".txt"));
+                outStream.writeObject(content);
+                outStream.flush();
+
+                BufferedReader reader = new BufferedReader(new FileReader("server/profiles/Profile_" + GroupId + selectedID + ".txt"));
+                String line;
+
+                // Keep all available images to download from profile
+                ArrayList<String[]> imgsToDownload = new ArrayList<>();
+                while ((line = reader.readLine()) != null) {
+                    ArrayList<String> splitLine = new ArrayList<String>(Arrays.asList(line.split(" ")));
+
+                    if (splitLine.size() == 3) {
+                        if (splitLine.get(1).equals("posted") || splitLine.get(1).equals("reposted")) {
+                            imgsToDownload.add(new String[]{selectedID, profileName, splitLine.get(2)});
+                        }
+                    }
+                }
+
+                // Send img list to client
+                outStream.writeObject(imgsToDownload);
+                outStream.flush();
+
+                handleDownload(imgsToDownload);
+
+            } else {
+                outStream.writeObject("access_denied");
+                outStream.flush();
+
+                if (((String) inStream.readObject()).equals("no_retry")) flag = false;
+            }
+        }
+    }
 
   // ---------------------------------------------------------------------------------------------------------------------------------------------------------
 

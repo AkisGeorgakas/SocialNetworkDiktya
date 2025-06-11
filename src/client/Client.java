@@ -111,16 +111,15 @@ public class Client {
 
         // Print Main Menu
         System.out.println("\n****Main Menu ****");
-        System.out.println("\n1) Upload Image from Client to Server\n2) Search Image on server\n3) Follow\n4) Unfollow\n5) Exit");
-        System.out.println("\nPlease insert a valid action number from 1-5 to continue:");
+        System.out.println("\n1) Upload Image from Client to Server\n2) Search Image on server\n3) Follow\n4) Unfollow\n5) Access Profile\n6) Exit");
+        System.out.println("\nPlease insert a valid action number from 1-6 to continue:");
         String actionCode = myObj.nextLine();
 
         // Check if the action code is valid
-        while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3") || Objects.equals(actionCode, "4") || Objects.equals(actionCode, "5"))) {
-          System.out.println("Wrong Input!\nPlease insert a valid action number from 1-5 to continue:");
+        while (!(Objects.equals(actionCode, "1") || Objects.equals(actionCode, "2") || Objects.equals(actionCode, "3") || Objects.equals(actionCode, "4") || Objects.equals(actionCode, "5") || Objects.equals(actionCode, "6"))) {
+          System.out.println("Wrong Input!\nPlease insert a valid action number from 1-6 to continue:");
           actionCode = myObj.nextLine();
         }
-
 
         // Send client's action code to the server
         out.writeObject(actionCode);
@@ -135,25 +134,29 @@ public class Client {
             break;
 
           case "2":
-            //Search Image
+            // Search Image
             searchImg();
             break;
 
           case "3":
-            //Follow
+            // Follow
             follow();
             break;
 
           case "4":
-            //unfollow
+            // Unfollow
             unfollow();
-          break;
+            break;
 
           case "5":
-            //Exit
-            stopClient();
-          break;
+            // Access Profile
+            accessProfile();
+            break;
 
+          case "6":
+            // Exit
+            stopClient();
+            break;
         }
       }
 
@@ -541,6 +544,66 @@ public class Client {
       System.out.println("\n" + (String)in.readObject());
   }
 
+  // Main Menu Option 5
+  // Access Profile
+  private void accessProfile() throws IOException, ClassNotFoundException, InterruptedException {
+    boolean flag = true;
+    ArrayList<String> usersList = (ArrayList<String>) in.readObject();
+
+    while(flag == true) {
+      System.out.println("Which profile would you like to access?");
+      for (int i = 0; i < usersList.size(); i++) System.out.println((i + 1) + ". " + usersList.toArray()[i]);
+
+      //TODO Check for valid choice
+      String choice = myObj.nextLine();
+
+      // Send to server the profile name client wants to access
+      out.writeObject(choice);
+      out.flush();
+
+      // Read server message (access approved/denied)
+      String response = (String) in.readObject();
+
+      if (response.equals("access_approved")) {
+        // Read profile
+        String profileContent = (String) in.readObject();
+
+        // Print profile content
+        System.out.println("\n" + profileContent +"\n");
+
+        ArrayList<String[]> imgsToDownload = (ArrayList<String[]>) in.readObject();
+
+        System.out.println("The following images are available for download:");
+        for (int i=0; i<imgsToDownload.size(); i++) {
+          System.out.println(i+1 + ". " + imgsToDownload.get(i)[2]);
+        }
+        System.out.println("Choose an image to download [1-" + imgsToDownload.size() + "]");
+        choice = myObj.nextLine();
+
+        downloadImg(Integer.parseInt(choice)-1, imgsToDownload.get(Integer.parseInt(choice)-1));
+
+      } else {
+        System.out.println("Access denied! You can only access profiles of the users that you follow.\n");
+      }
+
+      do {
+        System.out.println("\nWould you like to access another profile? [y/n]");
+        choice = myObj.nextLine();
+
+      } while (!(choice.equals("y") | choice.equals("Y") | choice.equals("n") | choice.equals("N")));
+
+      if (choice.equals("n") | choice.equals("N")) {
+        flag = false;
+
+        out.writeObject("no_retry");
+        out.flush();
+
+      } else {
+        out.writeObject("retry");
+        out.flush();
+      }
+    }
+  }
 
   // -----------------------------------------------------------------------------------------------------------------------
 
