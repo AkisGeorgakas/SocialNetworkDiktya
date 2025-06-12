@@ -602,11 +602,22 @@ public class Client {
     ArrayList<String> usersList = (ArrayList<String>) in.readObject();
 
     while(flag == true) {
-      System.out.println("Which profile would you like to access?");
+      System.out.println("\nWhich profile would you like to access? Insert a name from the list:");
       for (int i = 0; i < usersList.size(); i++) System.out.println((i + 1) + ". " + usersList.toArray()[i]);
 
-      //TODO Check for valid choice
-      String choice = myObj.nextLine();
+      //Check for valid choice name from the userlist
+      String choice = "";
+      while (true) {
+        
+        choice = myObj.nextLine().trim(); // trim to avoid whitespace issues
+
+        if (usersList.contains(choice)) {
+          break;
+        } else {
+          System.out.println("\nWrong input! Please insert a name from the list.");
+        }
+      }
+
 
       // Send to server the profile name client wants to access
       out.writeObject(choice);
