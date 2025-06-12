@@ -81,8 +81,8 @@ public class UsersLoader {
 
     List<String> infoToCheck = users.get(username);
 
-    if (infoToCheck != null && Objects.equals(password, infoToCheck.getFirst())) {
-      return infoToCheck.getLast();
+    if (infoToCheck != null && Objects.equals(password, infoToCheck.get(0))) {
+      return infoToCheck.get(1); // always clientId
     }
 
     return null;
@@ -123,7 +123,7 @@ public class UsersLoader {
 
     for (HashMap.Entry<String, List<String>> user : users.entrySet()) {
 
-      String tempClientId =  user.getValue().getLast();
+      String tempClientId =  user.getValue().get(1);
 
       if(tempClientId.equals(userId)){
         return user.getKey();
@@ -144,11 +144,32 @@ public class UsersLoader {
         String tempClientName =  user.getKey();
 
         if(tempClientName.equals(userName)){
-          return user.getValue().getLast();
+          return user.getValue().get(1);
         }
 
     }
 
+    return "";
+  }
+
+  // returns user prefered language
+  public String getUsersLanguage(String userId) {
+    loadUsers();
+
+    for (Map.Entry<String, List<String>> user : users.entrySet()) {
+      List<String> values = user.getValue();
+      
+      // Check if userId matches the stored ID
+      if (!values.isEmpty() && values.size() >= 2) {
+        String tempUserId = values.get(1); // Index 1 = ID
+        if (tempUserId.equals(userId)) {
+          // If language is present, return it
+          if (values.size() >= 3) {
+            return values.get(2);
+          }
+        }
+      }
+    }
     return "";
   }
 

@@ -241,7 +241,6 @@ public class ClientHandler extends Thread {
   // MAIN MENU -----------------------------------------------------------------------------------------------------------------------------------------------
 
   // Menu option 1
-    //TODO Update Others_45____ files
   private void handleUpload() throws IOException, ClassNotFoundException {
 
     // Check handshake
@@ -253,6 +252,11 @@ public class ClientHandler extends Thread {
       String imgNameGiven = (String) inStream.readObject();
       System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(filename)");
       String[] imgNameArray = imgNameGiven.split("\\.");
+
+      // send client preffered language
+      outStream.writeObject(usersLoader.getUsersLanguage(clientId));
+
+      // System.out.println(usersLoader.getUsersLanguage(clientId));
 
       // Receive 10 packets
       for (int i = 0; i < 10; i++) {

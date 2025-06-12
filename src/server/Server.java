@@ -8,7 +8,7 @@ import java.io.*;
 
 public class Server {
 
-    // Χάρτης clientID → SocketAddress (IP + port)
+    // clientID → SocketAddress (IP + port)
     public static ConcurrentHashMap<String, SocketAddress> clientDirectory = new ConcurrentHashMap<>();
 
     // Sockets

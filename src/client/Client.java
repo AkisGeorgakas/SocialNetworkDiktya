@@ -310,15 +310,39 @@ public class Client {
       out.writeObject(pathname);
       System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(filename)");
 
+      // Receive from server users prefered language
+      String languageShort = (String) in.readObject();
+      String languagePref = "";
+      String secondLanguagePref = "";
+
+      switch (languageShort) {
+        case "gr":
+          languagePref = "Greek";
+          secondLanguagePref = "English";
+          break;
+        case "en":
+          languagePref = "English";
+          secondLanguagePref = "Greek";
+          break;
+
+        default:
+          languagePref = "error lang " + languageShort;
+          break;
+      }
+
       // Load image and description
       String fullpathname = "client/directory/" + pathname;
       File imageFile = new File(fullpathname);
 
       byte[] imageBytes = Files.readAllBytes(imageFile.toPath());
 
-      // Ask for description
-      System.out.println("\nEnter a description please:");
-      String description = myObj.nextLine();
+      // Ask for description in users prefered language
+      System.out.println("\nEnter a description please in your preffered language (" + languagePref + ")" + " :");
+      String description1 = myObj.nextLine();
+
+      // Ask for description in users other language
+      System.out.println("\nEnter a description please in other language (" + secondLanguagePref + ")" +  "if you want :");
+      String description2 = myObj.nextLine();      
 
       // Create a txt with description given
       File file = new File("client/directory/" + pathNameClean + ".txt");
@@ -330,10 +354,10 @@ public class Client {
 
       // Write description to file
       FileWriter fw = new FileWriter(file);
-      fw.write(description + " " + pathname);
+      fw.write(languagePref + " " +  description1 + " " + pathname + "\n" + secondLanguagePref + " " +  description2 + " " + pathname + "\n");
       fw.close();
 
-      byte[] descriptionBytes = description.getBytes();
+      byte[] descriptionBytes = description1.getBytes();
       int descLength = descriptionBytes.length;
 
       // Check if description is too long
