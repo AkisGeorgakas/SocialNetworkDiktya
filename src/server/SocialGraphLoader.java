@@ -30,7 +30,7 @@ public class SocialGraphLoader {
       String line;
 
       while ((line = reader.readLine()) != null) {
-        String[] all = line.split(" ");
+        String[] all = line.split("\\s+");
 
         if(all.length >= 1 && all[0].equals(clientId)) {
           String[] parts = new String[all.length - 1];
@@ -57,7 +57,7 @@ public class SocialGraphLoader {
 
       while ((line = reader.readLine()) != null) {
 
-        String[] all = line.split(" ");
+        String[] all = line.split("\\s+");
 
         if(all.length >= 1 && !all[0].equals(clientId)) {
 

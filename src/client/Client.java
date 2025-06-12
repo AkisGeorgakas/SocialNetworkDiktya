@@ -341,8 +341,11 @@ public class Client {
       String description1 = myObj.nextLine();
 
       // Ask for description in users other language
-      System.out.println("\nEnter a description please in other language (" + secondLanguagePref + ")" +  "if you want :");
+      System.out.println("\nEnter a description please in other language (" + secondLanguagePref + ")" +  " :");
       String description2 = myObj.nextLine();      
+
+      out.writeObject(description1);
+      out.writeObject(description2);
 
       // Create a txt with description given
       File file = new File("client/directory/" + pathNameClean + ".txt");
@@ -352,12 +355,15 @@ public class Client {
         System.out.println("File already exists.");
       }
 
-      // Write description to file
+      // Write descriptions fot both languages if exists to file
       FileWriter fw = new FileWriter(file);
-      fw.write(languagePref + " " +  description1 + " " + pathname + "\n" + secondLanguagePref + " " +  description2 + " " + pathname + "\n");
+      fw.write(languagePref + " " +  description1 + " " + pathname);
+      if(description2.length() > 0){
+        fw.write("\n" + secondLanguagePref + " " +  description2 + " " + pathname);
+      }
       fw.close();
 
-      byte[] descriptionBytes = description1.getBytes();
+      byte[] descriptionBytes = (description1 + description2).getBytes();
       int descLength = descriptionBytes.length;
 
       // Check if description is too long
@@ -435,21 +441,42 @@ public class Client {
   public void searchImg() throws IOException, ClassNotFoundException, InterruptedException {
 
       String searchImgInput = "";
+      String languageImgInput = "";
 
       // check input filename
       while(true){
           System.out.println("\nEnter file you want to search:");
           searchImgInput = myObj.nextLine();
 
-          if(searchImgInput != null && !searchImgInput.isEmpty()){
+          System.out.println("\nChoose language you want to search:\n1) Greek\n2) English\nChoose a language by typing 1 or 2:");
+          languageImgInput = myObj.nextLine();
+
+          if(searchImgInput != null && !searchImgInput.isEmpty() && languageImgInput != null && !languageImgInput.isEmpty() && (languageImgInput.equals("1") || languageImgInput.equals("2"))){
               break;
           }else{
-              System.out.println("\nWrong input! Please insert a valid filename:");
+              System.out.println("\nWrong input! Please insert a valid filename and language to search.");
           }
       }
 
-      // send client's keyword to the server
+      String languageClear = "";
+      switch (languageImgInput) {
+        case "1":
+          languageClear = "Greek";
+          break;
+
+        case "2":
+          languageClear = "English";
+          break;
+      
+        default:
+          languageClear = "";
+          break;
+      }
+
+      // send client's keyword and language  to the server
       out.writeObject(searchImgInput);
+      out.flush();
+      out.writeObject(languageClear);
       out.flush();
 
       // Server response

@@ -253,10 +253,29 @@ public class ClientHandler extends Thread {
       System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(filename)");
       String[] imgNameArray = imgNameGiven.split("\\.");
 
-      // send client preffered language
-      outStream.writeObject(usersLoader.getUsersLanguage(clientId));
 
-      // System.out.println(usersLoader.getUsersLanguage(clientId));
+      // send client preffered language
+      String languageShort = usersLoader.getUsersLanguage(clientId);
+      outStream.writeObject(languageShort);
+      String languagePref = "";
+      String secondLanguagePref = "";
+      switch (languageShort) {
+        case "gr":
+          languagePref = "Greek";
+          secondLanguagePref = "English";
+          break;
+        case "en":
+          languagePref = "English";
+          secondLanguagePref = "Greek";
+          break;
+
+        default:
+          languagePref = "error lang " + languageShort;
+          break;
+      }
+
+      String description1 = (String) inStream.readObject();
+      String description2 = (String) inStream.readObject();
 
       // Receive 10 packets
       for (int i = 0; i < 10; i++) {
@@ -296,8 +315,14 @@ public class ClientHandler extends Thread {
           System.out.println("File already exists.");
       }
 
+      // FileWriter fw = new FileWriter(file);
+      // fw.write(description + " " + imgNameGiven);
+      // fw.close();
       FileWriter fw = new FileWriter(file);
-      fw.write(description + " " + imgNameGiven);
+      fw.write(languagePref + " " +  description1 + " " + imgNameGiven);
+      if(description2.length() > 0){
+        fw.write("\n" + secondLanguagePref + " " +  description2 + " " + imgNameGiven);
+      }
       fw.close();
 
       String profileTxtpath = "server/profiles/" + "Profile_" + GroupId + clientId + ".txt";
@@ -364,70 +389,91 @@ public class ClientHandler extends Thread {
   }
 
   // Menu Option 2
-    //TODO Add language-specific search
   private void handleSearch() throws IOException, ClassNotFoundException, InterruptedException {
 
-      // read input from client
-      String searcImgName = (String) inStream.readObject();
+    // read input image name from client
+    String searchImgName = (String) inStream.readObject();
 
-      ArrayList<String> following = socialLoader.getFollowing(clientId);
+    // read input language from client
+    String searchImgLang = (String) inStream.readObject();
 
-      System.out.println("Following: " + following);
+    ArrayList<String> following = socialLoader.getFollowing(clientId);
 
-      ArrayList<String[]> results = new ArrayList<String[]>();
-      boolean foundExactMatch = false;
+    ArrayList<String[]> results = new ArrayList<String[]>();
+    boolean foundExactMatch = false;
 
 
-      String profileTxtpath;
-      for (String clientId : following) {
-          profileTxtpath = "server/profiles/Profile_" + GroupId + clientId + ".txt";
+    String profileTxtpath;
+    for (String tempclientId : following) {
+        profileTxtpath = "server/profiles/Profile_" + GroupId + tempclientId + ".txt";
 
-          try {
-              
-              lockFile(profileTxtpath);
+        try {
+            
+            lockFile(profileTxtpath);
 
-              BufferedReader reader = new BufferedReader(new FileReader(profileTxtpath));
-              String line;
+            BufferedReader reader = new BufferedReader(new FileReader(profileTxtpath));
+            String line;
 
-              // FOR TEST PURPOSES WE LEAVE THIS TO CHECK LOCKED FILE
-              // if(this.clientId.equals("9432")) {
-              //   sleep(10000);
-              // }
-              
+            // FOR TEST PURPOSES WE LEAVE THIS TO CHECK LOCKED FILE
+            // if(this.tempclientId.equals("9432")) {
+            //   sleep(10000);
+            // }
+            
 
-              while ((line = reader.readLine()) != null) {
+            while ((line = reader.readLine()) != null && !line.trim().isEmpty()) {
 
-                  String photoFullName = (line.split(" "))[2];
-                  if (photoFullName.contains(searcImgName)) {
-
-                      for (String[] result : results) {
-                          if (result[2].equals(photoFullName)) {
-                              foundExactMatch = true;
-                              break;
-                          }
-                      }
-
-                      if (!foundExactMatch) {
-                          results.add(new String[]{clientId, usersLoader.getUserName(clientId), photoFullName});
-                      }
-
-                      foundExactMatch = false;
+              String[] parts = line.split("\\s+");
+              if (parts.length >= 3) {
+                String photoFullName = line.split("\\s+")[2];
+                if (photoFullName.trim().toLowerCase().contains(searchImgName.trim().toLowerCase())) {
+                  // filter image found by language
+                  String txtPath = "server/directories/directory_" + GroupId + tempclientId + "/" + photoFullName.split("\\.")[0] + ".txt";
+                  lockFile(txtPath);
+                  BufferedReader reader2 = new BufferedReader(new FileReader(txtPath));
+                  String txtline;
+                  boolean foundTxtWithCorrectLanguage = false;
+                  while ((txtline = reader2.readLine()) != null) {
+                    if(txtline.contains(searchImgLang)) {
+                      foundTxtWithCorrectLanguage = true;
+                      break;
+                    }
                   }
+                  unlockFile(txtPath);
+                  reader2.close();
+                  // --
+
+                  if(foundTxtWithCorrectLanguage){
+                    for (String[] result : results) {
+                        if (result[2].equals(photoFullName)) {
+                            foundExactMatch = true;
+                            break;
+                        }
+                    }
+
+                    if (!foundExactMatch) {
+                        results.add(new String[]{tempclientId, usersLoader.getUserName(tempclientId), photoFullName});
+                    }
+
+                    foundExactMatch = false;
+                  }
+                }
               }
-              reader.close();
+            }
+            reader.close();
 
-              unlockFile(profileTxtpath);
+            unlockFile(profileTxtpath);
 
-          } catch (Exception e) {
-              unlockFile(profileTxtpath);
-              System.out.println(e.getMessage());
-          }
-      }
-      outStream.writeObject(results);
+        } catch (Exception e) {
+            unlockFile(profileTxtpath);
+            System.out.println(e.getMessage());
+        }
+    }
+    outStream.writeObject(results);
 
-      // int selectedImage =  Integer.parseInt((String)(inStream.readObject()));
-
+    if(!results.isEmpty()){
       handleDownload(results);
+    }
+    
   }
 
   // TODO Change to GoBackN protocol
@@ -589,7 +635,7 @@ public class ClientHandler extends Thread {
                 // Keep all available images to download from profile
                 ArrayList<String[]> imgsToDownload = new ArrayList<>();
                 while ((line = reader.readLine()) != null) {
-                    ArrayList<String> splitLine = new ArrayList<String>(Arrays.asList(line.split(" ")));
+                    ArrayList<String> splitLine = new ArrayList<String>(Arrays.asList(line.split("\\s+")));
 
                     if (splitLine.size() == 3) {
                         if (splitLine.get(1).equals("posted") || splitLine.get(1).equals("reposted")) {
@@ -726,7 +772,7 @@ public class ClientHandler extends Thread {
 
       for (String response : responses) {
 
-        splitResponse = response.split(" ");
+        splitResponse = response.split("\\s+");
         switch (splitResponse[0]) {
 
           case "1":
