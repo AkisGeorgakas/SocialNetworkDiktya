@@ -84,6 +84,8 @@ public class ClientHandler extends Thread {
 
         // Main Menu
         while (!menuFlag) {
+            //Check notifications file
+            checkNotifications();
 
             // Read menu action
             String actionCode = (String) inStream.readObject();
@@ -91,8 +93,6 @@ public class ClientHandler extends Thread {
 
             // TODO Add comment functionality
             // TODO Add ask-comment functionality
-            // TODO Add ask-download functionality
-            // TODO Add permit-download functionality
             switch (actionCode) {
 
                 case "1":
@@ -166,10 +166,7 @@ public class ClientHandler extends Thread {
       System.out.println("");
 
       updateClientsDirecotryFiles();
-
       updateClientProfileFiles();
-
-      checkNotifications();
         
     } else {
       outStream.writeObject("FailedLogin");
@@ -478,6 +475,7 @@ public class ClientHandler extends Thread {
 
   // TODO Change to GoBackN protocol
   private void handleDownload(ArrayList<String[]> imageInfo) throws ClassNotFoundException, IOException, InterruptedException {
+
       if (downloadHandshake()) {
           System.out.println("Download sequence initiated");
 
@@ -487,6 +485,14 @@ public class ClientHandler extends Thread {
 
           String imageName = imageInfo.get(userSelectionNum)[2];
           String descriptionName = imageName.split("\\.")[0] + ".txt";
+
+          String permissionResponse = askPermission(imageName, imageInfo.get(userSelectionNum)[0]);
+          outStream.writeObject(permissionResponse);
+          if(permissionResponse.equals("Rejected")){
+              System.out.println("Access to the file was denied by uploader");
+              return;
+          }
+
           downloadSomething(imageName, descriptionName, imageInfo.get(userSelectionNum)[0]);
 
 
@@ -518,7 +524,89 @@ public class ClientHandler extends Thread {
       }
   }
 
-  // handshake for download
+    private String askPermission(String imageName, String IdToDownloadFrom) throws InterruptedException, IOException {
+
+        String pathToWrite = "server/directories/directory_" + GroupId + IdToDownloadFrom + "/notifications.txt";
+        lockFile(pathToWrite);
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(pathToWrite, true))) {
+            writer.write("download " + clientId + " " + imageName);
+            writer.newLine();
+        } catch (IOException e) {
+            System.err.println("Failed to write to " + pathToWrite);
+        }
+        unlockFile(pathToWrite);
+
+        boolean hasResponseArrived = false;
+        boolean otherClientAccepted = false;
+        String myNotificationsPath = "server/directories/directory_" + GroupId + clientId + "/notifications.txt";
+        while(!hasResponseArrived){
+            System.out.println("Waiting for response...");
+            Thread.sleep(5000);
+
+            lockFile(myNotificationsPath);
+            try (BufferedReader reader = new BufferedReader(new FileReader(myNotificationsPath))) {
+
+                String line;
+                String notificationType;
+                String notificationPhotoName;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty()) continue;
+
+                    String[] splitNotification = line.split("\\s+");
+                    notificationType = splitNotification[0];
+
+                    if ( !(splitNotification.length == 3) ) continue;
+
+                    if (notificationType.equals("RejectedDownload") && splitNotification[2].equals(imageName)) {
+                        hasResponseArrived = true;
+                        break;
+                    } else if (notificationType.equals("AcceptedDownload") && splitNotification[2].equals(imageName)){
+                        hasResponseArrived = true;
+                        otherClientAccepted = true;
+                        break;
+                    }
+                }
+
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            unlockFile(myNotificationsPath);
+        }
+        System.out.println("Response received: " + otherClientAccepted);
+        deleteDownloadNotification();
+        return otherClientAccepted? "Accepted" : "Rejected";
+    }
+
+    private void deleteDownloadNotification() throws IOException {
+        Path path = Paths.get("server/directories/directory_" + GroupId + clientId + "/notifications.txt");
+        List<String> lines = Files.readAllLines(path);
+        List<String> updatedLines = new ArrayList<>();
+
+        boolean notificationFound = false;
+
+        for (String line : lines) {
+
+            String[] parts = line.trim().split("\\s+");
+
+            if ( parts.length > 0 && ( parts[0].equals("RejectedDownload") || parts[0].equals("AcceptedDownload") )) {
+                notificationFound = true;
+                continue;
+            }
+
+            updatedLines.add(line);
+        }
+
+        if(notificationFound) {
+            // Rewrite the file
+            Files.write(path, updatedLines);
+            System.out.println("Deleted notification.");
+
+        }
+    }
+
+    // handshake for download
   private boolean downloadHandshake() throws IOException, ClassNotFoundException {
       String handshakeResponse = (String) inStream.readObject();
       System.out.println("HANDSHAKE STEP 1: Client sent request");
@@ -574,7 +662,7 @@ public class ClientHandler extends Thread {
       for (String sendToId : sendTo){
           String filePath = "server/directories/directory_" + GroupId + sendToId + "/notifications.txt";
           try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
-              writer.write(clientId);
+              writer.write("follow " + clientId);
               writer.newLine();
           } catch (IOException e) {
               System.err.println("Failed to write to " + filePath);
@@ -730,24 +818,44 @@ public class ClientHandler extends Thread {
   // Check notifications in notifications.txt after successful login
   private void checkNotifications() throws IOException, ClassNotFoundException {
 
-    ArrayList<String> notifications = new ArrayList<String>();
+    ArrayList<String> followNotifications = new ArrayList<String>();
+    ArrayList<String> downloadNotifications = new ArrayList<String>();
+    ArrayList<String> commentNotifications = new ArrayList<String>();
     String notificationsPath = "server/directories/directory_" + GroupId + clientId + "/notifications.txt";
 
+    lockFile(notificationsPath);
     try (BufferedReader reader = new BufferedReader(new FileReader(notificationsPath))) {
 
       String line;
+        String notificationType;
+        String notificationSenderId;
+        String notificationPhotoName;
       while ((line = reader.readLine()) != null) {
-        if(!line.trim().equals("")){
-          notifications.add(line);
+        if ( line.trim().isEmpty() ) continue;
+
+        notificationType = line.split("\\s+")[0];
+        notificationSenderId = line.split("\\s+")[1];
+
+        if(notificationType.equals("follow")){
+            followNotifications.add(notificationSenderId);
+        } else if (notificationType.equals("download")) {
+            notificationPhotoName = line.split("\\s+")[2];
+            downloadNotifications.add(notificationSenderId + " " + notificationPhotoName);
+
+        } else {
+            //Comment Functionality
         }
       }
 
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+    unlockFile(notificationsPath);
 
     // send notifications to client
-    outStream.writeObject(notifications);
+    outStream.writeObject(followNotifications);
+    outStream.writeObject(downloadNotifications);
+    outStream.writeObject(commentNotifications);
 
     //All notifications have been read. We empty the notifications.txt file
     try (FileWriter writer = new FileWriter(notificationsPath, false)) {
@@ -760,47 +868,104 @@ public class ClientHandler extends Thread {
 
     ArrayList<String> responses = new ArrayList<String>();
 
-    if (!notifications.isEmpty()) {
+    if (!followNotifications.isEmpty()) {
 
-      for (String notification : notifications) {
-          responses.add((String) inStream.readObject());
-      }
-
-      String[] splitResponse = {"", ""};
-      ArrayList<String> acceptFrom = new ArrayList<String>();
-      ArrayList<String> sendTo = new ArrayList<String>();
-
-      for (String response : responses) {
-
-        splitResponse = response.split("\\s+");
-        switch (splitResponse[0]) {
-
-          case "1":
-            System.out.println("Client " + clientId + " accepted follow request from " + splitResponse[1]);
-            acceptFrom.add(splitResponse[1]);
-            break;
-              
-          case "2":
-            //reject
-            System.out.println("Client " + clientId + " rejected follow request from " + splitResponse[1]);
-            break;
-
-          case "3":
-            System.out.println("Client " + clientId + " accepted and sent back follow request from " + splitResponse[1]);
-            acceptFrom.add(splitResponse[1]);
-            sendTo.add(splitResponse[1]);
-            break;
+        for (String notification : followNotifications) {
+            responses.add((String) inStream.readObject());
         }
-      }
 
-      socialLoader.acceptFollowRequests(clientId,acceptFrom);
-      sendFollowRequests(clientId,sendTo);
-      responses.clear();
+        String[] splitResponse = {"", ""};
+        ArrayList<String> acceptFrom = new ArrayList<String>();
+        ArrayList<String> sendTo = new ArrayList<String>();
+
+        for (String response : responses) {
+
+            splitResponse = response.split("\\s+");
+            switch (splitResponse[0]) {
+
+                case "1":
+                    System.out.println("Client " + clientId + " accepted follow request from " + splitResponse[1]);
+                    acceptFrom.add(splitResponse[1]);
+                    break;
+
+                case "2":
+                    //reject
+                    System.out.println("Client " + clientId + " rejected follow request from " + splitResponse[1]);
+                    break;
+
+                case "3":
+                    System.out.println("Client " + clientId + " accepted and sent back follow request from " + splitResponse[1]);
+                    acceptFrom.add(splitResponse[1]);
+                    sendTo.add(splitResponse[1]);
+                    break;
+            }
+        }
+
+        socialLoader.acceptFollowRequests(clientId, acceptFrom);
+        sendFollowRequests(clientId, sendTo);
+        responses.clear();
+    }
+    if (!downloadNotifications.isEmpty()) {
+
+        for (String notification : downloadNotifications) {
+            responses.add((String) inStream.readObject());
+        }
+
+        String[] splitDownloadResponse = {"", "", ""};
+        ArrayList<String[]> downloadResponses = new ArrayList<String[]>();
+
+        for (String response : responses) {
+
+            splitDownloadResponse = response.split("\\s+");
+            switch (splitDownloadResponse[0]) {
+
+                case "1":
+                    System.out.println("Client " + clientId + " accepted download request from " + splitDownloadResponse[1] +
+                            "for the photo" + splitDownloadResponse[2]);
+                    downloadResponses.add(new String[]{
+                            splitDownloadResponse[1],
+                            "AcceptedDownload " + clientId + " " + splitDownloadResponse[2]
+                    });
+                    break;
+
+                case "2":
+                    //reject
+                    System.out.println("Client " + clientId + " rejected download request from " + splitDownloadResponse[1] +
+                            "for the photo" + splitDownloadResponse[2]);
+                    downloadResponses.add(new String[]{
+                            splitDownloadResponse[1],
+                            "RejectedDownload " + clientId + " " + splitDownloadResponse[2]
+                    });
+                    break;
+
+            }
+        }
+
+        sendDownloadResponse(downloadResponses);
+        responses.clear();
+
+    }
     }
 
-  }
 
-  // General funtion to handle download from server to client
+
+    private void sendDownloadResponse(ArrayList<String[]> downloadResponses) {
+
+      String pathToWrite = "";
+      for (String[] responseInfo : downloadResponses){
+          pathToWrite = "server/directories/directory_" + GroupId + responseInfo[0] + "/notifications.txt";
+          lockFile(pathToWrite);
+          try (BufferedWriter writer = new BufferedWriter(new FileWriter(pathToWrite, true))) {
+              writer.write(responseInfo[1]);
+              writer.newLine();
+          } catch (IOException e) {
+              System.err.println("Failed to write to " + pathToWrite);
+          }
+          unlockFile(pathToWrite);
+      }
+    }
+
+    // General funtion to handle download from server to client
   private void downloadSomething(String imageName, String descriptionName, String userId) throws IOException {
 
     // directories

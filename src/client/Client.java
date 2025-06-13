@@ -108,6 +108,8 @@ public class Client {
 
       // Main Menu
       while(!menuFlag) {
+        // Check the notifications file
+        checkNotifications();
 
         // Print Main Menu
         System.out.println("\n****Main Menu ****");
@@ -205,7 +207,7 @@ public class Client {
 
       loginFlag = true;
 
-      checkNotifications();
+
 
     }else{
 
@@ -526,6 +528,13 @@ public class Client {
       out.writeObject(userSelectionNum);
       System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(user selection)");
 
+      String responseFromOtherClient = (String)in.readObject();
+      if(responseFromOtherClient.equals("Rejected")){
+        System.out.println("Access to the file was denied by uploader");
+        return;
+      }
+      System.out.println("Access to the file was granted by uploader!");
+
       // Download picture
       downloadSomething(imageInfo[2], false);
     }
@@ -598,10 +607,10 @@ public class Client {
   // Main Menu Option 5
   // Access Profile
   private void accessProfile() throws IOException, ClassNotFoundException, InterruptedException {
-    boolean flag = true;
+    boolean accessProfileFlag = true;
     ArrayList<String> usersList = (ArrayList<String>) in.readObject();
 
-    while(flag == true) {
+    while(accessProfileFlag) {
       System.out.println("\nWhich profile would you like to access? Insert a name from the list:");
       for (int i = 0; i < usersList.size(); i++) System.out.println((i + 1) + ". " + usersList.toArray()[i]);
 
@@ -655,7 +664,7 @@ public class Client {
       } while (!(choice.equals("y") | choice.equals("Y") | choice.equals("n") | choice.equals("N")));
 
       if (choice.equals("n") | choice.equals("N")) {
-        flag = false;
+        accessProfileFlag = false;
 
         out.writeObject("no_retry");
         out.flush();
@@ -678,17 +687,24 @@ public class Client {
   // Checks user notifications txt file for new notifications after login
   private void checkNotifications() throws IOException, ClassNotFoundException {
 
+
     // Notification Format: "sender's clientId"
-    @SuppressWarnings("unchecked")
-    ArrayList<String> notifications = (ArrayList<String>)in.readObject();
+    ArrayList<String> followNotifications = (ArrayList<String>)in.readObject();
+
+    // Notification Format: "sender's clientId [space] PhotoName"
+    ArrayList<String> downloadNotifications = (ArrayList<String>)in.readObject();
+    ArrayList<String> commentNotifications = (ArrayList<String>)in.readObject();
+
+    int notificationCount = followNotifications.size() + downloadNotifications.size() + commentNotifications.size();
     String action = "";
-    if(notifications.isEmpty()){
+    if(notificationCount == 0){
       System.out.println("You have already checked all your notifications! :)");
     }else{
 
-      System.out.println("You have "+notifications.size() + " notifications.\n");
+      System.out.println("You have " + notificationCount + " notifications.\n");
 
-      for (String notification : notifications) {
+      //Check follow notification and respond
+      for (String notification : followNotifications) {
 
         System.out.println("User " + notification + " wants to follow you.");
         System.out.println("Would you like to: \n1) Accept, \n2) Reject,\n3) Accept and follow back");
@@ -715,6 +731,34 @@ public class Client {
         }
 
         //Output Format: " "action" " " "sender's clientId" "
+        out.writeObject(action + " " + notification);
+      }
+
+      //Check download notifications and respond
+      for (String notification : downloadNotifications){
+        String[] notificationInfo = notification.split("\\s+");
+
+        System.out.println("User " + notificationInfo[0] + " wants to download this photo: " + notificationInfo[1] );
+        System.out.println("Would you like to: \n1) Accept, \n2) Reject");
+        action = myObj.nextLine();
+        while (!(Objects.equals(action, "1") || Objects.equals(action, "2") )){
+          System.out.println("Wrong Input!\nPlease insert a valid action number from 1-2 to continue:");
+          action = myObj.nextLine();
+        }
+
+        switch (action) {
+
+          case "1":
+            System.out.println(notificationInfo[1] + "download request accepted.");
+            break;
+
+          case "2":
+            System.out.println(notificationInfo[1] + "download request rejected.");
+            break;
+
+        }
+
+        //Output Format: " "action" " " "sender's clientId" " " "photoName" "
         out.writeObject(action + " " + notification);
       }
 
@@ -807,7 +851,7 @@ public class Client {
           }
 
           // for the occasion of 9.e
-          if(i == 2 && !firstTime3rdPackage){
+          if(i == 2 && !firstTime3rdPackage ){
               System.out.println("Didn't send package on purpose");
               firstTime3rdPackage = true;
               // i--;
