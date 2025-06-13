@@ -851,14 +851,14 @@ public class Client {
           }
 
           // for the occasion of 9.e
-          if(i == 2 && !firstTime3rdPackage ){
+          if(i == 2 && !firstTime3rdPackage && !isLoginOrSignup){
               System.out.println("Didn't send package on purpose");
               firstTime3rdPackage = true;
               // i--;
           }
 
           // for the occasion of 9.f
-          else if (i == 5 && !firstTime6thPackage) {
+          else if (i == 5 && !firstTime6thPackage && !isLoginOrSignup) {
 
               System.out.println("Delaying acknowledgement by 6 seconds...");
               TimeUnit.SECONDS.sleep(6);
