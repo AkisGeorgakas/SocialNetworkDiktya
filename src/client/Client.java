@@ -627,12 +627,11 @@ public class Client {
         }
       }
 
-
       // Send to server the profile name client wants to access
       out.writeObject(choice);
       out.flush();
 
-      // Read server message (access approved/denied)
+      // Read server message (access_approved/denied)
       String response = (String) in.readObject();
 
       if (response.equals("access_approved")) {
@@ -642,16 +641,47 @@ public class Client {
         // Print profile content
         System.out.println("\n" + profileContent +"\n");
 
+
+
         ArrayList<String[]> imgsToDownload = (ArrayList<String[]>) in.readObject();
 
-        System.out.println("The following images are available for download:");
+        System.out.println("The following images are available for download and/or comment:");
         for (int i=0; i<imgsToDownload.size(); i++) {
           System.out.println(i+1 + ". " + imgsToDownload.get(i)[2]);
         }
-        System.out.println("Choose an image to download [1-" + imgsToDownload.size() + "]");
-        choice = myObj.nextLine();
 
-        downloadImg(Integer.parseInt(choice)-1, imgsToDownload.get(Integer.parseInt(choice)-1));
+        String[] splitChoice;
+        int imageNumber;
+        String action;
+        do {
+          System.out.println("Start your input with the image number [1-" + imgsToDownload.size() + "]. After that write the action [download/comment].");
+
+          choice = myObj.nextLine(); // Read user input
+
+          splitChoice = choice.split("\\s+"); // Split the user input into parts
+          // Check if we have enough parts. If not, assign dummy values to the variables
+          if (splitChoice.length != 2) {
+            imageNumber = 0;
+            action = "";
+            continue;
+          }
+          //Extract user input
+          imageNumber = splitChoice[0].matches("\\d+") ? Integer.parseInt(splitChoice[0]) : 0;
+          action = splitChoice[1];
+
+          // Check whether user input is valid
+        } while ( ! ( (imageNumber >= 1 && imageNumber <= imgsToDownload.size())
+                && ( action.equals("download") || action.equals("comment") ) )
+        );
+
+
+        out.writeObject(action);
+        if ( action.equals("download") ){
+          downloadImg(imageNumber-1, imgsToDownload.get(imageNumber-1));
+        } else{
+          handleComment(imageNumber-1, imgsToDownload.get(imageNumber-1));
+        }
+
 
       } else {
         System.out.println("Access denied! You can only access profiles of the users that you follow.\n");
@@ -674,6 +704,21 @@ public class Client {
         out.flush();
       }
     }
+  }
+
+  private void handleComment(int userSelectionNum, String[] imageInfo) throws IOException {
+
+    System.out.println("Handle comment function initiated.");
+
+    out.writeObject(imageInfo[2]);
+
+    System.out.println("\n Write a comment for image:" + imageInfo[2]);
+    String comment = myObj.nextLine();
+
+    out.writeObject(comment);
+    out.flush();
+
+
   }
 
   // -----------------------------------------------------------------------------------------------------------------------

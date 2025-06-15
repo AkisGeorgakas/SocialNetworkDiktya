@@ -692,12 +692,13 @@ public class ClientHandler extends Thread {
     private void handleAccessProfile() throws IOException, ClassNotFoundException, InterruptedException {
         boolean flag = true;
 
-        while (flag) {
-            List<String> usersList = new ArrayList<>(usersLoader.getAllUsers());
+        List<String> usersList = new ArrayList<>(usersLoader.getAllUsers());
 
-            // Send to client a list of all usernames on users.txt
-            outStream.writeObject(usersList);
-            outStream.flush();
+        // Send to client a list of all usernames on users.txt
+        outStream.writeObject(usersList);
+        outStream.flush();
+
+        while (flag) {
 
             // Read the profile name client wants to access
             String profileName = (String) inStream.readObject(); // ProfileName, client requested access
@@ -736,18 +737,119 @@ public class ClientHandler extends Thread {
                 outStream.writeObject(imgsToDownload);
                 outStream.flush();
 
-                handleDownload(imgsToDownload);
+                // Read which action user wants to perform [download/comment]
+                String selectedAction = (String)inStream.readObject();
+
+                if(selectedAction.equals("download")){
+                    handleDownload(imgsToDownload);
+                } else {
+                    handleComment(imgsToDownload,selectedID);
+                }
+
 
             } else {
                 outStream.writeObject("access_denied");
                 outStream.flush();
-
-                if (((String) inStream.readObject()).equals("no_retry")) flag = false;
             }
+            if (((String) inStream.readObject()).equals("no_retry")) flag = false;
         }
     }
 
-  // ---------------------------------------------------------------------------------------------------------------------------------------------------------
+    private void handleComment(ArrayList<String[]> imageInfo, String uploaderId) throws IOException, ClassNotFoundException, InterruptedException {
+        System.out.println("Comment Function Initiated.");
+
+        String imageName = (String)inStream.readObject();
+
+        String comment = (String)inStream.readObject();
+
+
+        String permissionResponse = askCommentPermission(imageName, comment, uploaderId);
+
+
+
+    }
+
+    private String askCommentPermission(String imageName,String comment, String IdToDownloadFrom) throws InterruptedException, IOException {
+
+        String pathToWrite = "server/directories/directory_" + GroupId + IdToDownloadFrom + "/notifications.txt";
+        lockFile(pathToWrite);
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(pathToWrite, true))) {
+            writer.write("comment " + clientId + " " + imageName + " " + comment);
+            writer.newLine();
+        } catch (IOException e) {
+            System.err.println("Failed to write to " + pathToWrite);
+        }
+        unlockFile(pathToWrite);
+
+        boolean hasResponseArrived = false;
+        boolean otherClientAccepted = false;
+        String myNotificationsPath = "server/directories/directory_" + GroupId + clientId + "/notifications.txt";
+        while(!hasResponseArrived){
+            System.out.println("Waiting for response...");
+            Thread.sleep(5000);
+
+            lockFile(myNotificationsPath);
+            try (BufferedReader reader = new BufferedReader(new FileReader(myNotificationsPath))) {
+
+                String line;
+                String notificationType;
+                String notificationPhotoName;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty()) continue;
+
+                    String[] splitNotification = line.split("\\s+");
+                    notificationType = splitNotification[0];
+
+                    if ( !(splitNotification.length == 3) ) continue;
+
+                    if (notificationType.equals("RejectedComment") && splitNotification[2].equals(imageName)) {
+                        hasResponseArrived = true;
+                        break;
+                    } else if (notificationType.equals("AcceptedComment") && splitNotification[2].equals(imageName)){
+                        hasResponseArrived = true;
+                        otherClientAccepted = true;
+                        break;
+                    }
+                }
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            unlockFile(myNotificationsPath);
+        }
+        System.out.println("Response received: " + otherClientAccepted);
+        deleteCommentNotification();
+        return otherClientAccepted? "Accepted" : "Rejected";
+    }
+
+    private void deleteCommentNotification() throws IOException {
+        Path path = Paths.get("server/directories/directory_" + GroupId + clientId + "/notifications.txt");
+        List<String> lines = Files.readAllLines(path);
+        List<String> updatedLines = new ArrayList<>();
+
+        boolean notificationFound = false;
+
+        for (String line : lines) {
+
+            String[] parts = line.trim().split("\\s+");
+
+            if ( parts.length > 0 && ( parts[0].equals("RejectedComment") || parts[0].equals("AcceptedComment") )) {
+                notificationFound = true;
+                continue;
+            }
+
+            updatedLines.add(line);
+        }
+
+        if(notificationFound) {
+            // Rewrite the file
+            Files.write(path, updatedLines);
+            System.out.println("Deleted notification.");
+
+        }
+
+    }
+    // ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -820,7 +922,7 @@ public class ClientHandler extends Thread {
 
     ArrayList<String> followNotifications = new ArrayList<String>();
     ArrayList<String> downloadNotifications = new ArrayList<String>();
-    ArrayList<String> commentNotifications = new ArrayList<String>();
+    ArrayList<String[]> commentNotifications = new ArrayList<String[]>();
     String notificationsPath = "server/directories/directory_" + GroupId + clientId + "/notifications.txt";
 
     lockFile(notificationsPath);
@@ -830,6 +932,7 @@ public class ClientHandler extends Thread {
         String notificationType;
         String notificationSenderId;
         String notificationPhotoName;
+        String comment;
       while ((line = reader.readLine()) != null) {
         if ( line.trim().isEmpty() ) continue;
 
@@ -838,12 +941,21 @@ public class ClientHandler extends Thread {
 
         if(notificationType.equals("follow")){
             followNotifications.add(notificationSenderId);
+
         } else if (notificationType.equals("download")) {
             notificationPhotoName = line.split("\\s+")[2];
             downloadNotifications.add(notificationSenderId + " " + notificationPhotoName);
 
-        } else {
-            //Comment Functionality
+        } else if (notificationType.equals("comment")){
+            notificationPhotoName = line.split("\\s+")[2];
+            comment = line.split("\\s+")[3];
+            if (Math.random() < 0.5) {
+                System.out.println("Comment Rejected.");
+                commentNotifications.add(new String[]{notificationSenderId, "RejectedComment " + notificationPhotoName + " " + clientId + " " + comment });
+            } else {
+                System.out.println("Comment Accepted.");
+                commentNotifications.add(new String[]{notificationSenderId, "AcceptedComment " + notificationPhotoName + " " + clientId + " " + comment });
+            }
         }
       }
 
@@ -945,8 +1057,26 @@ public class ClientHandler extends Thread {
         responses.clear();
 
     }
+    if (!commentNotifications.isEmpty()) {
+      sendCommentResponse(commentNotifications);
+    }
     }
 
+    private void sendCommentResponse(ArrayList<String[]> commentResponses) {
+        String pathToWrite = "";
+        for (String[] responseInfo : commentResponses){
+            pathToWrite = "server/directories/directory_" + GroupId + responseInfo[0] + "/notifications.txt";
+            lockFile(pathToWrite);
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(pathToWrite, true))) {
+                writer.write(responseInfo[1]);
+                writer.newLine();
+            } catch (IOException e) {
+                System.err.println("Failed to write to " + pathToWrite);
+            }
+            unlockFile(pathToWrite);
+        }
+
+    }
 
 
     private void sendDownloadResponse(ArrayList<String[]> downloadResponses) {
