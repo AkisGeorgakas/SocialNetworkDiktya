@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
@@ -706,17 +707,24 @@ public class Client {
     }
   }
 
-  private void handleComment(int userSelectionNum, String[] imageInfo) throws IOException {
-
-    System.out.println("Handle comment function initiated.");
+  private void handleComment(int userSelectionNum, String[] imageInfo) throws IOException, ClassNotFoundException {
 
     out.writeObject(imageInfo[2]);
 
-    System.out.println("\n Write a comment for image:" + imageInfo[2]);
+    System.out.println("\nWrite a comment for image:" + imageInfo[2]);
     String comment = myObj.nextLine();
 
-    out.writeObject(comment);
+    String fixedComment = Arrays.toString(comment.split("\\s+")).replace(" ", "");
+
+    out.writeObject(fixedComment);
     out.flush();
+
+    String responseFromOtherClient = (String)in.readObject();
+    if(responseFromOtherClient.equals("Rejected")){
+      System.out.println("Comment was denied by uploader!\n");
+      return;
+    }
+    System.out.println("Access for comment granted by uploader!\n");
 
 
   }

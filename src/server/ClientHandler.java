@@ -91,8 +91,6 @@ public class ClientHandler extends Thread {
             String actionCode = (String) inStream.readObject();
             System.out.println("client.Client message: " + actionCode);
 
-            // TODO Add comment functionality
-            // TODO Add ask-comment functionality
             switch (actionCode) {
 
                 case "1":
@@ -497,13 +495,19 @@ public class ClientHandler extends Thread {
 
 
           lockFile("server/profiles/" + "Profile_" + GroupId + clientId + ".txt");
-
           // update profile.txt
           FileWriter proFileServerWriter = new FileWriter("server/profiles/" + "Profile_" + GroupId + clientId + ".txt", true);
           proFileServerWriter.append("\n");
           proFileServerWriter.append(clientId).append(" reposted ").append(imageName);
           proFileServerWriter.close();
+          unlockFile("server/profiles/" + "Profile_" + GroupId + clientId + ".txt");
 
+          lockFile("client/profiles/" + "Profile_" + GroupId + clientId + ".txt");
+          // update profile.txt
+          FileWriter proFileServerWriter2 = new FileWriter("client/profiles/" + "Profile_" + GroupId + clientId + ".txt", true);
+          proFileServerWriter2.append("\n");
+          proFileServerWriter2.append(clientId).append(" reposted ").append(imageName);
+          proFileServerWriter2.close();
           unlockFile("server/profiles/" + "Profile_" + GroupId + clientId + ".txt");
 
           // 9.h ------
@@ -756,17 +760,42 @@ public class ClientHandler extends Thread {
     }
 
     private void handleComment(ArrayList<String[]> imageInfo, String uploaderId) throws IOException, ClassNotFoundException, InterruptedException {
-        System.out.println("Comment Function Initiated.");
+        System.out.println("\nComment Function Initiated.\n");
 
         String imageName = (String)inStream.readObject();
 
+        // read from client as "[comment1,comment2,comment3]" split byt space string
         String comment = (String)inStream.readObject();
 
-
         String permissionResponse = askCommentPermission(imageName, comment, uploaderId);
+        outStream.writeObject(permissionResponse);
+
+        if(permissionResponse.equals("Rejected")){
+          System.out.println("\nComment was denied by uploader!\n");
+          return;
+        }
+        System.out.println("\nAccess for comment granted by uploader!");
+
+        String commentLine = clientId + " commented " + comment + " " + imageName + " " + uploaderId;
+
+        // update server profile.txt
+        lockFile("server/profiles/" + "Profile_" + GroupId + clientId + ".txt");
+        FileWriter proFileServerWriter = new FileWriter("server/profiles/" + "Profile_" + GroupId + clientId + ".txt", true);
+        proFileServerWriter.append("\n");
+        proFileServerWriter.append(commentLine);
+        proFileServerWriter.close();
+        unlockFile("server/profiles/" + "Profile_" + GroupId + clientId + ".txt");
+
+        // update client profile.txt
+        lockFile("client/profiles/" + "Profile_" + GroupId + clientId + ".txt");
+        FileWriter proFileServerWriter2 = new FileWriter("client/profiles/" + "Profile_" + GroupId + clientId + ".txt", true);
+        proFileServerWriter2.append("\n");
+        proFileServerWriter2.append(commentLine);
+        proFileServerWriter2.close();
+        unlockFile("server/profiles/" + "Profile_" + GroupId + clientId + ".txt");
 
 
-
+        System.out.println("\nComment was successfully added!\n");
     }
 
     private String askCommentPermission(String imageName,String comment, String IdToDownloadFrom) throws InterruptedException, IOException {
@@ -793,19 +822,22 @@ public class ClientHandler extends Thread {
 
                 String line;
                 String notificationType;
-                String notificationPhotoName;
                 while ((line = reader.readLine()) != null) {
                     if (line.trim().isEmpty()) continue;
 
+                    System.out.println("Line: " + line);
+
                     String[] splitNotification = line.split("\\s+");
                     notificationType = splitNotification[0];
+                    System.out.println("33Notification: " + splitNotification[0] + " " + splitNotification[1]);
+                    if ((splitNotification.length != 4) ) continue;
 
-                    if ( !(splitNotification.length == 3) ) continue;
+                    System.out.println("36Notification: " + splitNotification[0] + " " + splitNotification[1]);
 
-                    if (notificationType.equals("RejectedComment") && splitNotification[2].equals(imageName)) {
+                    if (notificationType.equals("RejectedComment") && splitNotification[1].equals(imageName)) {
                         hasResponseArrived = true;
                         break;
-                    } else if (notificationType.equals("AcceptedComment") && splitNotification[2].equals(imageName)){
+                    } else if (notificationType.equals("AcceptedComment") && splitNotification[1].equals(imageName)){
                         hasResponseArrived = true;
                         otherClientAccepted = true;
                         break;
@@ -1219,12 +1251,12 @@ public class ClientHandler extends Thread {
     while (true) {
       
       if (lock.tryLock()) {
-        System.out.println("Client " + clientId + ": granted access to " + filePath);
+        System.out.println("\nClient " + clientId + ": granted access to " + filePath);
         break;
 
       } else {
 
-        System.out.println("Client " + clientId + ": Trying to access file: " + filePath + " but is locked. Waiting...");
+        System.out.println("\nClient " + clientId + ": Trying to access file: " + filePath + " but is locked. Waiting...");
 
         try {
           Thread.sleep(2000); // 2 Seconds before trying again
@@ -1245,7 +1277,7 @@ public class ClientHandler extends Thread {
     // Check if the file is locked or already unlocked
     if (lock != null && lock.isHeldByCurrentThread()) {
       lock.unlock();
-      System.out.println("File Unlocked: " + filePath);
+      System.out.println("File Unlocked: " + filePath + "\n");
     }
 
   }
