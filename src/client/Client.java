@@ -878,16 +878,17 @@ public class Client {
   // General function to download a file from server to client images and bind txt files
   private void downloadSomething(String imgName, Boolean isLoginOrSignup) throws IOException, ClassNotFoundException, InterruptedException {
 
-      Map<Integer, byte[]> receivedPackets = new TreeMap<>();
-      ArrayList<Integer> receivedPacketseqNums = new ArrayList<>();
-      // for the occasion of 9.e
-      boolean firstTime3rdPackage = false;
-      // for the occasion of 9.f
-      boolean firstTime6thPackage = false;
+
+      // Array to keep track of the Acknowledgements not sent
+      // The value firstTimeReceivingPackage[0] tells me whether I already received the 3rd package and so on
+      boolean[] firstTimeReceivingPackage = {true,true, false,true,true,false,false,false,false,false};
 
       // 9.g message from server
       System.out.println("Txt status from server:\n" + in.readObject()+ "\n");
 
+      /*
+      Map<Integer, byte[]> receivedPackets = new TreeMap<>();
+      ArrayList<Integer> receivedPacketseqNums = new ArrayList<>();
       // for loop to receive 10 packets
       for (int i = 0; i < 10; i++) {
 
@@ -926,9 +927,45 @@ public class Client {
               out.writeObject(("ACK" + packet.sequenceNumber));
               out.flush();
           }
+      }*/
+
+      int expectedSeqNum = 0;
+      Map<Integer, byte[]> receivedPackets = new TreeMap<>();
+
+      int delayedAcknowledgementsCounter = 0;
+
+      while (receivedPackets.size() < 10) {
+        Packet packet = (Packet) in.readObject();
+        System.out.println("Received packet #" + packet.sequenceNumber);
+
+        if (packet.sequenceNumber == expectedSeqNum) {
+          System.out.println( "---------------\nReceived Packet with number: "+ packet.sequenceNumber+"\nI Expected"+ expectedSeqNum +"\nI have delayed: "+delayedAcknowledgementsCounter+"\n--------------\n");
+          if((expectedSeqNum == 2 || ( (expectedSeqNum >= 5) && (expectedSeqNum < 10 ) ) )
+                  && delayedAcknowledgementsCounter <= 5
+                  && !firstTimeReceivingPackage[expectedSeqNum]
+                  && !isLoginOrSignup){
+
+            System.out.println("Didn't send acknowledgement on purpose");
+            firstTimeReceivingPackage[expectedSeqNum] = true;
+            delayedAcknowledgementsCounter++;
+            continue;
+          }
+
+          System.out.println("Sending Ack "+ expectedSeqNum);
+          receivedPackets.put(packet.sequenceNumber, packet.data);
+          out.writeObject("ACK" + packet.sequenceNumber);
+          out.flush();
+          expectedSeqNum++;
+        } else {
+          System.out.println("Out-of-order packet received. Expected: " + expectedSeqNum);
+          // Re-ack the last correct packet to help server
+          out.writeObject("ACK" + (expectedSeqNum - 1));
+          out.flush();
+        }
       }
 
-      // Reconstruct the image and description
+
+    // Reconstruct the image and description
       ByteArrayOutputStream combined = new ByteArrayOutputStream();
       for (int i = 0; i < 10; i++) {
           combined.write(receivedPackets.get(i));

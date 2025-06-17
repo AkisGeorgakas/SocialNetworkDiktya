@@ -1171,6 +1171,7 @@ public class ClientHandler extends Thread {
     ArrayList<String> receivedAcknowledgements = new ArrayList<String>();
     boolean ignoreNext = false;
 
+    /*
     for (int i = 0; i < 10; i++) {
 
         if (!ignoreNext) {
@@ -1239,10 +1240,118 @@ public class ClientHandler extends Thread {
     }
 
     // Print received acknowledgements array
-    System.out.println("Received Acknowledgements: "+receivedAcknowledgements);
-  }  
+    System.out.println("Received Acknowledgements: "+receivedAcknowledgements);*/
 
-  // Locks selected file
+      class SenderState {
+          int base = 0;
+          int nextSeqNum = 0;
+      }
+      SenderState state = new SenderState();
+
+      int windowSize = 3;
+      Timer timer = new Timer();
+      Map<Integer, Packet> packetBuffer = new HashMap<>();
+      Set<String> receivedAcks = new HashSet<>();
+      while (state.base < 10) {
+          while (state.nextSeqNum < state.base + windowSize && state.nextSeqNum < 10) {
+              int start = state.nextSeqNum * packetSize;
+              int end = Math.min(start + packetSize, fullData.length);
+              byte[] chunk = new byte[end - start];
+              System.arraycopy(fullData, start, chunk, 0, chunk.length);
+              Packet packet = new Packet(state.nextSeqNum, chunk);
+              System.out.println("Sending packet " + state.nextSeqNum);
+              outStream.writeObject(packet);
+              outStream.flush();
+              packetBuffer.put(state.nextSeqNum, packet);
+              System.out.println("Sent packet " + state.nextSeqNum);
+              if (state.base == state.nextSeqNum) {
+                  // start timer
+                  System.out.println("First call");
+                  startTimer(timer, () -> resendPackets(state.base, state.nextSeqNum, packetBuffer, outStream));
+              }
+              state.nextSeqNum++;
+
+              System.out.println("Current Base:" + state.base + " Current nextSeqNum" + state.nextSeqNum);
+          }
+
+          int originalTimeout = clientSocket.getSoTimeout();
+          try {
+              clientSocket.setSoTimeout(3000);
+              Object ackObj = inStream.readObject();
+              if (ackObj instanceof String ack && ack.startsWith("ACK")) {
+                  int ackNum = Integer.parseInt(ack.substring(3));
+                  System.out.println("Received but not yet accepted: " + ack);
+                  if (!receivedAcks.contains(ack)) {
+                      receivedAcks.add(ack);
+                      System.out.println("Received and ACCEPTED: ACK" + ackNum);
+                  }
+                  if (ackNum == state.base) {
+                      state.base++;
+
+                      while (receivedAcks.contains("ACK" + state.base)) {
+                          state.base++;
+                      }
+
+                      if (state.base == 10) {
+                          timer.cancel();
+                          break;
+                      } else {
+                          timer.cancel();
+                          startTimer(timer, () -> resendPackets(state.base, state.nextSeqNum, packetBuffer, outStream));
+                      }
+                  }
+              }
+          } catch (SocketTimeoutException | ClassNotFoundException e) {
+
+              System.out.println("ACK timeout! Resending from packet " + state.base);
+              // Retransmit from base
+              for (int i = state.base; i < state.nextSeqNum; i++) {
+                  Packet resendPacket = packetBuffer.get(i);
+                  outStream.writeObject(resendPacket);
+                  outStream.flush();
+                  System.out.println("Resent packet " + i);
+              }
+          } finally {
+              try {
+                  clientSocket.setSoTimeout(originalTimeout); // Restore timeout
+              } catch (SocketException e) {
+                  e.printStackTrace();
+              }
+          }
+      }
+
+  }
+    private void startTimer(Timer timer, Runnable task) {
+        timer.cancel();
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                task.run();
+            }
+        }, 3000);
+    }
+
+    private void resendPackets(int base, int nextSeqNum, Map<Integer, Packet> packetBuffer, ObjectOutputStream outStream) {
+        if (base >= nextSeqNum ) {
+            return; // Don't resend if transmission is already complete
+        }
+
+        try {
+            System.out.println("Timeout! Resending packets from " + base + " to " + (nextSeqNum - 1));
+            for (int i = base; i < nextSeqNum; i++) {
+                Packet resendPacket = packetBuffer.get(i);
+                outStream.writeObject(resendPacket);
+                outStream.flush();
+                System.out.println("Resent packet " + i);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    // Locks selected file
   private void lockFile(String filePath) {
 
     fileLocks.putIfAbsent(filePath, new ReentrantLock());
