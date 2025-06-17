@@ -1,6 +1,7 @@
 package server;
 
 import common.Packet;
+import common.SenderState;
 
 import java.io.*;
 import java.net.Socket;
@@ -27,6 +28,7 @@ public class ClientHandler extends Thread {
   private ObjectInputStream inStream;
   private ObjectOutputStream outStream;
 
+
   // Menu Flags
   private boolean loginFlag = false;
   private boolean menuFlag = false;
@@ -40,7 +42,11 @@ public class ClientHandler extends Thread {
   // Map with locks per file
   private static final ConcurrentHashMap<String, ReentrantLock> fileLocks = new ConcurrentHashMap<>();
 
-  // Constructor
+  //Volatile flag to stop GoBackN packets after download is completed
+  volatile boolean stopResending = false;
+
+
+    // Constructor
   public ClientHandler(Socket socket) throws IOException {
     this.clientSocket = socket;
   }
@@ -51,6 +57,7 @@ public class ClientHandler extends Thread {
       // Streams
       outStream = new ObjectOutputStream(clientSocket.getOutputStream());
       inStream = new ObjectInputStream(clientSocket.getInputStream());
+      outStream.flush();
 
       // connection message
       String clientMessage = (String) inStream.readObject();
@@ -1242,16 +1249,17 @@ public class ClientHandler extends Thread {
     // Print received acknowledgements array
     System.out.println("Received Acknowledgements: "+receivedAcknowledgements);*/
 
-      class SenderState {
-          int base = 0;
-          int nextSeqNum = 0;
-      }
+
+      outStream.flush();
+      stopResending = false;
+
       SenderState state = new SenderState();
 
       int windowSize = 3;
       Timer timer = new Timer();
       Map<Integer, Packet> packetBuffer = new HashMap<>();
       Set<String> receivedAcks = new HashSet<>();
+
       while (state.base < 10) {
           while (state.nextSeqNum < state.base + windowSize && state.nextSeqNum < 10) {
               int start = state.nextSeqNum * packetSize;
@@ -1267,7 +1275,13 @@ public class ClientHandler extends Thread {
               if (state.base == state.nextSeqNum) {
                   // start timer
                   System.out.println("First call");
-                  startTimer(timer, () -> resendPackets(state.base, state.nextSeqNum, packetBuffer, outStream));
+                  startTimer(timer, () -> {
+                      if (stopResending) return;  // Prevent resends after GBN ends
+                      synchronized (state) {
+                          if (state.base >= 10) return; // Make sure you don't resend anything after base becomes 10
+                          resendPackets(state, packetBuffer, outStream);
+                      }
+                  });
               }
               state.nextSeqNum++;
 
@@ -1297,8 +1311,13 @@ public class ClientHandler extends Thread {
                           break;
                       } else {
                           timer.cancel();
-                          startTimer(timer, () -> resendPackets(state.base, state.nextSeqNum, packetBuffer, outStream));
-                      }
+                          startTimer(timer, () -> {
+                              if (stopResending) return;  // Prevent resends after GBN ends
+                              synchronized (state) {
+                                  if (state.base >= 10) return; // Make sure you don't resend anything after base becomes 10
+                                  resendPackets(state, packetBuffer, outStream);
+                              }
+                          });                      }
                   }
               }
           } catch (SocketTimeoutException | ClassNotFoundException e) {
@@ -1313,6 +1332,8 @@ public class ClientHandler extends Thread {
               }
           } finally {
               try {
+
+                  timer.cancel();  // To catch timeout exits or exceptions
                   clientSocket.setSoTimeout(originalTimeout); // Restore timeout
               } catch (SocketException e) {
                   e.printStackTrace();
@@ -1320,6 +1341,12 @@ public class ClientHandler extends Thread {
           }
       }
 
+      outStream.flush();
+
+      stopResending = true;
+      System.out.println("--------------------------------------------------Done-----------------------------------------------------");
+      outStream.writeObject("Transmission Complete");
+      outStream.flush();
   }
     private void startTimer(Timer timer, Runnable task) {
         timer.cancel();
@@ -1332,14 +1359,14 @@ public class ClientHandler extends Thread {
         }, 3000);
     }
 
-    private void resendPackets(int base, int nextSeqNum, Map<Integer, Packet> packetBuffer, ObjectOutputStream outStream) {
-        if (base >= nextSeqNum ) {
+    private void resendPackets(SenderState state, Map<Integer, Packet> packetBuffer, ObjectOutputStream outStream) {
+        if (state.base >= state.nextSeqNum ) {
             return; // Don't resend if transmission is already complete
         }
 
         try {
-            System.out.println("Timeout! Resending packets from " + base + " to " + (nextSeqNum - 1));
-            for (int i = base; i < nextSeqNum; i++) {
+            System.out.println("Timeout! Resending packets from " + state.base + " to " + (state.nextSeqNum - 1));
+            for (int i = state.base; i < state.nextSeqNum; i++) {
                 Packet resendPacket = packetBuffer.get(i);
                 outStream.writeObject(resendPacket);
                 outStream.flush();

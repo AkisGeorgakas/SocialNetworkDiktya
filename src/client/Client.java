@@ -62,6 +62,8 @@ public class Client {
       out = new ObjectOutputStream(connection.getOutputStream());
       in = new ObjectInputStream(connection.getInputStream());
 
+      out.flush();
+
       System.out.println("Connection Established!");
 
       out.writeObject("Established connection with server!");
@@ -929,6 +931,8 @@ public class Client {
           }
       }*/
 
+
+
       int expectedSeqNum = 0;
       Map<Integer, byte[]> receivedPackets = new TreeMap<>();
 
@@ -1006,8 +1010,14 @@ public class Client {
       fos.write(imageBytes);
       fos.close();
 
-      // 9.h)
-      System.out.println("The transmission is completed!");
+    Object obj = in.readObject();
+
+      if (obj instanceof String str && str.equals("Transmission Complete")) {
+        System.out.println("The transmission is completed!");
+      }else {
+        System.out.println("Wrong Server Message, transmission still open");
+      }
+
   }
 
   // Option EXIT for both menus

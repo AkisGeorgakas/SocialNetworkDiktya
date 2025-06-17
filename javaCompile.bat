@@ -7,7 +7,8 @@ javac ^
     src\server\Server.java ^
     src\server\SocialGraphLoader.java ^
     src\server\UsersLoader.java ^
-	  src\common\Packet.java
+	src\common\Packet.java ^
+	src\common\SenderState.java
 
 IF %ERRORLEVEL% EQU 0 (
     echo Compilation successful!
