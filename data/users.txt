@@ -6,7 +6,5 @@ eric:password123,5566,gr
 aggie:cupcake,0394,gr
 billy:billy,9432,gr
 akis:a,8493,gr
-giorgos:password,100,en
-billy2:billy2,98,gr
-billy3:billy3,21,gr
-billy4:billy4,22,en
+giorgos:password,1001,en
+bebop:cowboy,0449,gr

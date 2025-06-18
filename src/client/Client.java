@@ -177,6 +177,7 @@ public class Client {
 
   // LOGIN MENU -------------------------------------------------------------------------------------------------------------
 
+  // Login Menu Option 1
   // Login
   public void login() throws IOException, ClassNotFoundException, InterruptedException {
 
@@ -221,6 +222,8 @@ public class Client {
 
   }
 
+
+  // Login Menu Option 2
   // Sign Up
   public void signup() throws IOException, ClassNotFoundException {
 
@@ -273,9 +276,6 @@ public class Client {
   }
 
   // ------------------------------------------------------------------------------------------------------------------------
-
-
-
 
 
   // MAIN MENU --------------------------------------------------------------------------------------------------------------
@@ -347,7 +347,7 @@ public class Client {
 
       // Ask for description in users other language
       System.out.println("\nEnter a description please in other language (" + secondLanguagePref + ")" +  " :");
-      String description2 = myObj.nextLine();      
+      String description2 = myObj.nextLine();
 
       out.writeObject(description1);
       out.writeObject(description2);
@@ -357,7 +357,7 @@ public class Client {
 
       // Check if file already exists
       if (!file.createNewFile()){
-        System.out.println("File already exists.");
+        System.out.println("\nFile already exists.");
       }
 
       // Write descriptions fot both languages if exists to file
@@ -417,7 +417,7 @@ public class Client {
       proFileServerWriter.append("\n");
       proFileServerWriter.append(clientId).append(" posted ").append(pathname);
       proFileServerWriter.close();
-      
+
     }else{
       System.out.println("\nHandshake Failed! Try again :(");
     }
@@ -437,8 +437,6 @@ public class Client {
     // Check if handshake is accepted
     return handshakeResponse.equals("acceptedUpload");
   }
-
-
 
 
   // Main Menu Option 2
@@ -472,7 +470,7 @@ public class Client {
         case "2":
           languageClear = "English";
           break;
-      
+
         default:
           languageClear = "";
           break;
@@ -512,7 +510,7 @@ public class Client {
         }
 
         int userSelectionNum = Integer.parseInt(userSelection) - 1;
-        
+
         // begin download process
         downloadImg(userSelectionNum, results.get(userSelectionNum));
 
@@ -536,7 +534,6 @@ public class Client {
         System.out.println("Access to the file was denied by uploader");
         return;
       }
-      System.out.println("Access to the file was granted by uploader!");
 
       // Download picture
       downloadSomething(imageInfo[2], false);
@@ -548,11 +545,9 @@ public class Client {
     out.writeObject("request to download");
     System.out.println("HANDSHAKE STEP 1: Client sent request");
     String handshakeResponse = (String) in.readObject();
-      System.out.println("HANDSHAKE STEP 2: Server sent acknowledgement");
+    System.out.println("HANDSHAKE STEP 2: Server sent acknowledgement");
     return handshakeResponse.equals("acceptedDownload");
-}
-
-
+  }
 
 
   // Main Menu Option 3
@@ -583,6 +578,7 @@ public class Client {
     System.out.println((String)in.readObject());
   }
 
+
   // Main Menu Option 4
   // Unfollow other user
   private void unfollow() throws IOException, ClassNotFoundException {
@@ -607,6 +603,7 @@ public class Client {
       System.out.println("\n" + (String)in.readObject());
   }
 
+
   // Main Menu Option 5
   // Access Profile
   private void accessProfile() throws IOException, ClassNotFoundException, InterruptedException {
@@ -620,7 +617,7 @@ public class Client {
       //Check for valid choice name from the userlist
       String choice = "";
       while (true) {
-        
+
         choice = myObj.nextLine().trim(); // trim to avoid whitespace issues
 
         if (usersList.contains(choice)) {
@@ -734,9 +731,6 @@ public class Client {
   // -----------------------------------------------------------------------------------------------------------------------
 
 
-
-
-
   // GENERAL FUNCTIONS ----------------------------------------------------------------------------------------------------------------------------------------
 
   // Checks user notifications txt file for new notifications after login
@@ -782,7 +776,7 @@ public class Client {
           case "3":
             System.out.println("Follow request accepted and followed back.");
             break;
-            
+
         }
 
         //Output Format: " "action" " " "sender's clientId" "
@@ -824,7 +818,7 @@ public class Client {
 
   // Empty client directories after login for a new session
   public static void emptyFolder(File folder) {
-    
+
     // Get all the files from the folder
     File[] files = folder.listFiles();
 
@@ -838,7 +832,7 @@ public class Client {
           emptyFolder(f);
 
         }else{
-          
+
           if (!f.delete()){
             System.out.println("Failed to delete file.");
           }
@@ -853,7 +847,7 @@ public class Client {
 
   // Updates client's local files after login
   private void updateLocalFiles() throws IOException, ClassNotFoundException, InterruptedException {
-    
+
     // Empty client directories
     emptyFolder(new File("client/directory"));
     emptyFolder(new File("client/profiles") );
@@ -880,58 +874,12 @@ public class Client {
   // General function to download a file from server to client images and bind txt files
   private void downloadSomething(String imgName, Boolean isLoginOrSignup) throws IOException, ClassNotFoundException, InterruptedException {
 
-
       // Array to keep track of the Acknowledgements not sent
       // The value firstTimeReceivingPackage[0] tells me whether I already received the 3rd package and so on
       boolean[] firstTimeReceivingPackage = {true,true, false,true,true,false,false,false,false,false};
 
       // 9.g message from server
       System.out.println("Txt status from server:\n" + in.readObject()+ "\n");
-
-      /*
-      Map<Integer, byte[]> receivedPackets = new TreeMap<>();
-      ArrayList<Integer> receivedPacketseqNums = new ArrayList<>();
-      // for loop to receive 10 packets
-      for (int i = 0; i < 10; i++) {
-
-          Packet packet = (Packet) in.readObject();
-          System.out.println("Received packet #" + packet.sequenceNumber);
-          if(!receivedPacketseqNums.contains(packet.sequenceNumber)){
-              receivedPacketseqNums.add(packet.sequenceNumber);
-              receivedPackets.put(packet.sequenceNumber, packet.data);
-          }else{
-              if(i!=9) {
-                  System.out.println("Received a duplicate and didn't save it.");
-                  i--;
-              }
-          }
-
-          // for the occasion of 9.e
-          if(i == 2 && !firstTime3rdPackage && !isLoginOrSignup){
-              System.out.println("Didn't send package on purpose");
-              firstTime3rdPackage = true;
-              // i--;
-          }
-
-          // for the occasion of 9.f
-          else if (i == 5 && !firstTime6thPackage && !isLoginOrSignup) {
-
-              System.out.println("Delaying acknowledgement by 6 seconds...");
-              TimeUnit.SECONDS.sleep(6);
-
-              // Send ACK
-              out.writeObject(("ACK" + packet.sequenceNumber));
-              out.flush();
-
-              firstTime6thPackage = true;
-          }else{
-              // Send ACK
-              out.writeObject(("ACK" + packet.sequenceNumber));
-              out.flush();
-          }
-      }*/
-
-
 
       int expectedSeqNum = 0;
       Map<Integer, byte[]> receivedPackets = new TreeMap<>();
@@ -940,28 +888,32 @@ public class Client {
 
       while (receivedPackets.size() < 10) {
         Packet packet = (Packet) in.readObject();
+        System.out.println("--------------------------------------");
         System.out.println("Received packet #" + packet.sequenceNumber);
 
         if (packet.sequenceNumber == expectedSeqNum) {
-          System.out.println( "---------------\nReceived Packet with number: "+ packet.sequenceNumber+"\nI Expected"+ expectedSeqNum +"\nI have delayed: "+delayedAcknowledgementsCounter+"\n--------------\n");
+
           if((expectedSeqNum == 2 || ( (expectedSeqNum >= 5) && (expectedSeqNum < 10 ) ) )
                   && delayedAcknowledgementsCounter <= 5
                   && !firstTimeReceivingPackage[expectedSeqNum]
                   && !isLoginOrSignup){
 
+            System.out.println("--------------------------------------");
             System.out.println("Didn't send acknowledgement on purpose");
             firstTimeReceivingPackage[expectedSeqNum] = true;
             delayedAcknowledgementsCounter++;
             continue;
           }
 
-          System.out.println("Sending Ack "+ expectedSeqNum);
+          System.out.println("Sending Ack "+ expectedSeqNum + "");
           receivedPackets.put(packet.sequenceNumber, packet.data);
+
           out.writeObject("ACK" + packet.sequenceNumber);
           out.flush();
+
           expectedSeqNum++;
+
         } else {
-          System.out.println("Out-of-order packet received. Expected: " + expectedSeqNum);
           // Re-ack the last correct packet to help server
           out.writeObject("ACK" + (expectedSeqNum - 1));
           out.flush();
@@ -993,7 +945,7 @@ public class Client {
       // Create txt with description given
       File file = new File("client/directory/" + imgName.split("\\.")[0] + ".txt");
       if ( !file.createNewFile() ) {
-          System.out.println("File already exists.");
+          System.out.println("\nFile already exists.");
       }
       FileWriter fw = new FileWriter(file);
       fw.write(description + " " + imgName);
@@ -1017,7 +969,7 @@ public class Client {
     }
 
       if ( str.equals("Transmission Complete")) {
-        System.out.println("The transmission is completed!");
+        System.out.println("\nThe transmission is completed!");
       }else {
         System.out.println("Wrong Server Message but it's a string " + str);
       }
@@ -1048,7 +1000,6 @@ public class Client {
 
   }
 
-
   // Clean all client files for new user
   private void fixNewUserlFiles(){
 
@@ -1065,12 +1016,11 @@ public class Client {
       File file2 = new File("client/profiles/Others" + GroupId + clientId + ".txt");
       file2.createNewFile();
       System.out.println("File: " + file2 + " created.");
-      
+
     }catch(Exception e) {
       e.printStackTrace();
     }
   }
-
 
   private void copyProfileFromServer() throws ClassNotFoundException, IOException{
 

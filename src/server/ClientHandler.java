@@ -17,41 +17,41 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class ClientHandler extends Thread {
   
-  // Sockets
-  private final Socket clientSocket;
+    // Sockets
+    private final Socket clientSocket;
 
-  // Loaders
-  private final UsersLoader usersLoader = new UsersLoader("../data/users.txt");
-  SocialGraphLoader socialLoader = new SocialGraphLoader();
+    // Loaders
+    private final UsersLoader usersLoader = new UsersLoader("../data/users.txt");
+    SocialGraphLoader socialLoader = new SocialGraphLoader();
 
-  // Streams
-  private ObjectInputStream inStream;
-  private ObjectOutputStream outStream;
+    // Streams
+    private ObjectInputStream inStream;
+    private ObjectOutputStream outStream;
 
 
-  // Menu Flags
-  private boolean loginFlag = false;
-  private boolean menuFlag = false;
+    // Menu Flags
+    private boolean loginFlag = false;
+    private boolean menuFlag = false;
 
-  // Client ID
-  private String clientId;
+    // Client ID
+    private String clientId;
 
-  // Group ID
-  private final String GroupId = "45";
+    // Group ID
+    private final String GroupId = "45";
 
-  // Map with locks per file
-  private static final ConcurrentHashMap<String, ReentrantLock> fileLocks = new ConcurrentHashMap<>();
+    // Map with locks per file
+    private static final ConcurrentHashMap<String, ReentrantLock> fileLocks = new ConcurrentHashMap<>();
 
-  //Volatile flag to stop GoBackN packets after download is completed
-  private volatile boolean stopResending = false;
+    //Volatile flag to stop GoBackN packets after download is completed
+    private volatile boolean stopResending = false;
 
 
     // Constructor
-  public ClientHandler(Socket socket) throws IOException {
+    public ClientHandler(Socket socket) throws IOException {
     this.clientSocket = socket;
-  }
+    }
 
-  public void run() {
+    public void run() {
 
     try {
       // Streams
@@ -135,14 +135,14 @@ public class ClientHandler extends Thread {
       e.printStackTrace();
     }
 
-  }
+    }
 
 
+    // LOGIN MENU FUNCTIONS ------------------------------------------------------------------------------------------------------------------------------------
 
-
-  // LOGIN MENU FUNCTIONS ------------------------------------------------------------------------------------------------------------------------------------
-
-  private void login() throws IOException, ClassNotFoundException {
+    // Login Menu Option 1
+    // Login
+    private void login() throws IOException, ClassNotFoundException {
 
     // Read username and password
     String userName = (String) inStream.readObject();
@@ -152,7 +152,7 @@ public class ClientHandler extends Thread {
     clientId = usersLoader.checkUser(userName, password);
 
     if (clientId != null) {
-    
+
       // Send success login response
       outStream.writeObject("SuccessLogin");
       outStream.flush();
@@ -172,7 +172,7 @@ public class ClientHandler extends Thread {
 
       updateClientsDirecotryFiles();
       updateClientProfileFiles();
-        
+
     } else {
       outStream.writeObject("FailedLogin");
       outStream.flush();
@@ -180,9 +180,11 @@ public class ClientHandler extends Thread {
       // resetLogin to retry
       this.login();
     }
-  }
+    }
 
-  private void signup() throws IOException, ClassNotFoundException {
+    // Login Menu Option 2
+    // Sign Up
+    private void signup() throws IOException, ClassNotFoundException {
     // Read username and password
     String userName = (String) inStream.readObject();
     String password = (String) inStream.readObject();
@@ -217,7 +219,7 @@ public class ClientHandler extends Thread {
       Server.clientDirectory.put(clientId, clientSocket.getRemoteSocketAddress());
       System.out.println("\nOnline clients: ");
       Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
-      System.out.println("");      
+      System.out.println("");
 
       fixNewUserlFiles();
 
@@ -232,18 +234,17 @@ public class ClientHandler extends Thread {
       // resetSignup
       this.signup();
     }
-  }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-  // ---------------------------------------------------------------------------------------------------------------------------------------------------------
+    // MAIN MENU -----------------------------------------------------------------------------------------------------------------------------------------------
 
 
-
-
-  // MAIN MENU -----------------------------------------------------------------------------------------------------------------------------------------------
-
-  // Menu option 1
-  private void handleUpload() throws IOException, ClassNotFoundException {
+    // Menu option 1
+    // Upload
+    private void handleUpload() throws IOException, ClassNotFoundException {
 
     // Check handshake
     if (uploadHandshake()) {
@@ -364,10 +365,11 @@ public class ClientHandler extends Thread {
       System.out.println("Hanshake Failed! Try again :(");
     }
 
-  }
+    }
 
-  // Handshake for upload
-  private boolean uploadHandshake() throws IOException, ClassNotFoundException {
+
+    // Handshake for upload
+    private boolean uploadHandshake() throws IOException, ClassNotFoundException {
 
     String handshakeResponse = (String) inStream.readObject();
 
@@ -388,10 +390,12 @@ public class ClientHandler extends Thread {
       return false;
 
     }
-  }
+    }
 
-  // Menu Option 2
-  private void handleSearch() throws IOException, ClassNotFoundException, InterruptedException {
+
+    // Menu Option 2
+    // Search
+    private void handleSearch() throws IOException, ClassNotFoundException, InterruptedException {
 
     // read input image name from client
     String searchImgName = (String) inStream.readObject();
@@ -410,7 +414,7 @@ public class ClientHandler extends Thread {
         profileTxtpath = "server/profiles/Profile_" + GroupId + tempclientId + ".txt";
 
         try {
-            
+
             lockFile(profileTxtpath);
 
             BufferedReader reader = new BufferedReader(new FileReader(profileTxtpath));
@@ -420,7 +424,7 @@ public class ClientHandler extends Thread {
             // if(this.tempclientId.equals("9432")) {
             //   sleep(10000);
             // }
-            
+
 
             while ((line = reader.readLine()) != null && !line.trim().isEmpty()) {
 
@@ -475,11 +479,10 @@ public class ClientHandler extends Thread {
     if(!results.isEmpty()){
       handleDownload(results);
     }
-    
-  }
 
-  // TODO Change to GoBackN protocol
-  private void handleDownload(ArrayList<String[]> imageInfo) throws ClassNotFoundException, IOException, InterruptedException {
+    }
+
+    private void handleDownload(ArrayList<String[]> imageInfo) throws ClassNotFoundException, IOException, InterruptedException {
 
       if (downloadHandshake()) {
           System.out.println("Download sequence initiated");
@@ -533,7 +536,7 @@ public class ClientHandler extends Thread {
       } else {
           System.out.println("\nDownload Hanshake Failed! Try again :(");
       }
-  }
+    }
 
     private String askPermission(String imageName, String IdToDownloadFrom) throws InterruptedException, IOException {
 
@@ -585,7 +588,7 @@ public class ClientHandler extends Thread {
             }
             unlockFile(myNotificationsPath);
         }
-        System.out.println("Response received: " + otherClientAccepted);
+
         deleteDownloadNotification();
         return otherClientAccepted? "Accepted" : "Rejected";
     }
@@ -617,8 +620,8 @@ public class ClientHandler extends Thread {
         }
     }
 
-    // handshake for download
-  private boolean downloadHandshake() throws IOException, ClassNotFoundException {
+    // Handshake for download
+    private boolean downloadHandshake() throws IOException, ClassNotFoundException {
       String handshakeResponse = (String) inStream.readObject();
       System.out.println("HANDSHAKE STEP 1: Client sent request");
       if (handshakeResponse.equals("request to download")) {
@@ -629,10 +632,10 @@ public class ClientHandler extends Thread {
           outStream.writeObject("rejected");
           return false;
       }
-  }
+    }
 
-  // 9.h
-  private void copyFiles(String sourceDest, String targetDest, String[] filesToCopyArr) {
+    // 9.h
+    private void copyFiles(String sourceDest, String targetDest, String[] filesToCopyArr) {
       Path sourceDir = Paths.get(sourceDest);
       Path targetDir = Paths.get(targetDest);
 
@@ -646,13 +649,11 @@ public class ClientHandler extends Thread {
               System.err.println("\n" + "Failed to copy " + fileName + ": " + e.getMessage() + "\n");
           }
       }
-  }
+    }
 
 
-
-
-  // Menu option 3
-  private void handleFollow() throws IOException, ClassNotFoundException {
+    // Menu option 3
+    private void handleFollow() throws IOException, ClassNotFoundException {
       String response = "";
       // read input from client
       String userToFollow = (String) inStream.readObject();
@@ -667,9 +668,9 @@ public class ClientHandler extends Thread {
       }
       outStream.writeObject(response);
 
-  }
+    }
 
-  private void sendFollowRequests(String clientId, ArrayList<String> sendTo){
+    private void sendFollowRequests(String clientId, ArrayList<String> sendTo){
       for (String sendToId : sendTo){
           String filePath = "server/directories/directory_" + GroupId + sendToId + "/notifications.txt";
           try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
@@ -679,10 +680,11 @@ public class ClientHandler extends Thread {
               System.err.println("Failed to write to " + filePath);
           }
       }
-  }
+    }
 
-  // Menu option 4
-  private void handleUnfollow() throws ClassNotFoundException, IOException{
+
+    // Menu option 4
+    private void handleUnfollow() throws ClassNotFoundException, IOException{
       String response = "";
 
       // read input from client
@@ -696,7 +698,8 @@ public class ClientHandler extends Thread {
           System.out.println("User " + clientId + " successfully unfollowed user " + userToUnFollow);
       }
       outStream.writeObject(response);
-  }
+    }
+
 
     // Menu option 5
     // Handle Access Profile
@@ -888,16 +891,14 @@ public class ClientHandler extends Thread {
         }
 
     }
+
     // ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
+    // GENERAL FUNCTIONS -------------------------------------------------------------------------------------------------------------------
 
-
-
-  // GENERAL FUNCTIONS -------------------------------------------------------------------------------------------------------------------
-
-  // Sync all files from server to client
-  private void updateClientsDirecotryFiles() throws IOException {
+    // Sync all files from server to client
+    private void updateClientsDirecotryFiles() throws IOException {
 
     System.out.println("Synchronizing files with client...");
 
@@ -931,10 +932,10 @@ public class ClientHandler extends Thread {
       outStream.writeObject("NotFound");
     }
 
-  }
+    }
 
-  // Sign out client and terminate everything necessary
-  public void stopClientHandler() {
+    // Sign out client and terminate everything necessary
+    public void stopClientHandler() {
 
     try {
       // Remove client from online clients in Server
@@ -954,10 +955,10 @@ public class ClientHandler extends Thread {
       System.out.println(e.getMessage());
     }
 
-  }
+    }
 
-  // Check notifications in notifications.txt after successful login
-  private void checkNotifications() throws IOException, ClassNotFoundException {
+    // Check notifications in notifications.txt after successful login
+    private void checkNotifications() throws IOException, ClassNotFoundException {
 
     ArrayList<String> followNotifications = new ArrayList<String>();
     ArrayList<String> downloadNotifications = new ArrayList<String>();
@@ -1117,7 +1118,6 @@ public class ClientHandler extends Thread {
 
     }
 
-
     private void sendDownloadResponse(ArrayList<String[]> downloadResponses) {
 
       String pathToWrite = "";
@@ -1135,7 +1135,7 @@ public class ClientHandler extends Thread {
     }
 
     // General funtion to handle download from server to client
-  private void downloadSomething(String imageName, String descriptionName, String userId) throws IOException {
+    private void downloadSomething(String imageName, String descriptionName, String userId) throws IOException {
 
     // directories
     String imageDirectory = "server/directories/" + "directory_" + GroupId + userId + "/" + imageName;
@@ -1178,79 +1178,6 @@ public class ClientHandler extends Thread {
     ArrayList<String> receivedAcknowledgements = new ArrayList<String>();
     boolean ignoreNext = false;
 
-    /*
-    for (int i = 0; i < 10; i++) {
-
-        if (!ignoreNext) {
-          int start = i * packetSize;
-          int end = Math.min(start + packetSize, fullData.length);
-          byte[] chunk = new byte[end - start];
-          System.arraycopy(fullData, start, chunk, 0, chunk.length);
-
-          // Send the packet
-          Packet packet = new Packet(i, chunk);
-          outStream.writeObject(packet);
-          outStream.flush();
-
-          System.out.println("Sent packet " + i);
-
-        } else {
-            ignoreNext = false;
-        }
-
-        // Set temporary timeout for ACK
-        int originalTimeout = clientSocket.getSoTimeout();
-        try {
-
-            clientSocket.setSoTimeout(3000); // 3-second timeout
-
-            Object ackObj = inStream.readObject();
-
-            if (ackObj instanceof String ack && ack.equals("ACK" + i) && !receivedAcknowledgements.contains(ack)) {
-              System.out.println("Received: " + ack);
-              receivedAcknowledgements.add(ack);
-
-            } else {
-
-              if (i != 9) {
-
-                // resend
-                if (ackObj instanceof String ack && receivedAcknowledgements.contains(ack)) {
-                    System.out.println("I received a duplicate ACK. Ignored. -> " + ack);
-                    ignoreNext = true;
-                } else {
-                    System.out.println("Invalid ACK. Resending packet " + i);
-                }
-                i--; //run again and don't send a new packet
-
-              } else {
-                break;
-              }
-            }
-
-        } catch (SocketTimeoutException e) {
-          // 9.e message
-          System.out.println("Server did not receive ACK" + i + ". Resending...");
-          i--; // resend
-
-        } catch (Exception e) {
-          e.printStackTrace();
-          break;
-
-        } finally {
-          try {
-              clientSocket.setSoTimeout(originalTimeout); // Restore timeout
-          } catch (SocketException e) {
-              e.printStackTrace();
-          }
-        }
-    }
-
-    // Print received acknowledgements array
-    System.out.println("Received Acknowledgements: "+receivedAcknowledgements);*/
-
-
-      outStream.flush();
       stopResending = false;
 
       SenderState state = new SenderState();
@@ -1267,14 +1194,15 @@ public class ClientHandler extends Thread {
               byte[] chunk = new byte[end - start];
               System.arraycopy(fullData, start, chunk, 0, chunk.length);
               Packet packet = new Packet(state.nextSeqNum, chunk);
+
               System.out.println("Sending packet " + state.nextSeqNum);
+
               outStream.writeObject(packet);
               outStream.flush();
               packetBuffer.put(state.nextSeqNum, packet);
-              System.out.println("Sent packet " + state.nextSeqNum);
+
               if (state.base == state.nextSeqNum) {
                   // start timer
-                  System.out.println("First call");
                   startTimer(timer, () -> {
                       if (stopResending) return;  // Prevent resends after GBN ends
                       synchronized (state) {
@@ -1284,8 +1212,6 @@ public class ClientHandler extends Thread {
                   });
               }
               state.nextSeqNum++;
-
-              System.out.println("Current Base:" + state.base + " Current nextSeqNum" + state.nextSeqNum);
           }
 
           int originalTimeout = clientSocket.getSoTimeout();
@@ -1342,13 +1268,11 @@ public class ClientHandler extends Thread {
           }
       }
 
-      outStream.flush();
-
-
       System.out.println("--------------------------------------------------Done-----------------------------------------------------");
       outStream.writeObject("Transmission Complete");
       outStream.flush();
-  }
+    }
+
     private void startTimer(Timer timer, Runnable task) {
         timer.cancel();
         timer = new Timer();
@@ -1378,15 +1302,14 @@ public class ClientHandler extends Thread {
         }
     }
 
-
     // Locks selected file
-  private void lockFile(String filePath) {
+    private void lockFile(String filePath) {
 
     fileLocks.putIfAbsent(filePath, new ReentrantLock());
     ReentrantLock lock = fileLocks.get(filePath);
 
     while (true) {
-      
+
       if (lock.tryLock()) {
         System.out.println("\nClient " + clientId + ": granted access to " + filePath);
         break;
@@ -1404,23 +1327,22 @@ public class ClientHandler extends Thread {
 
       }
     }
-  }
+    }
 
-  // Unlocks the selected file
-  private void unlockFile(String filePath) {
+    // Unlocks the selected file
+    private void unlockFile(String filePath) {
 
     ReentrantLock lock = fileLocks.get(filePath);
-    
+
     // Check if the file is locked or already unlocked
     if (lock != null && lock.isHeldByCurrentThread()) {
       lock.unlock();
       System.out.println("File Unlocked: " + filePath + "\n");
     }
 
-  }
+    }
 
-
-  private void fixNewUserlFiles() throws IOException{
+    private void fixNewUserlFiles() throws IOException{
 
 
     System.out.println("Creating all nessecary user files...");
@@ -1428,7 +1350,7 @@ public class ClientHandler extends Thread {
 
     // add user to social graph txt
     socialLoader.addUser(clientId);
-    
+
     try {
 
       File file = new File("server/directories/directory_" + GroupId + clientId + "/notifications.txt");
@@ -1449,10 +1371,9 @@ public class ClientHandler extends Thread {
     }
 
 
-  }
+    }
 
-
-  private void updateClientProfileFiles() throws IOException{
+    private void updateClientProfileFiles() throws IOException{
     String sourceFile = "server/profiles/Profile_" + GroupId + clientId + ".txt";
     String content = Files.readString(Paths.get(sourceFile));
     outStream.writeObject(content);
@@ -1462,7 +1383,7 @@ public class ClientHandler extends Thread {
     String content2 = Files.readString(Paths.get(sourceFile2));
     outStream.writeObject(content2);
     System.out.println("Sending Others_" + GroupId + clientId + ".txt");
-  }
+    }
 
   // --------------------------------------------------------------------------------------------------------------------------------------
 
