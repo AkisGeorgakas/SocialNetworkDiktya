@@ -944,7 +944,7 @@ public class Client {
           System.out.println("\nFile already exists.");
       }
       FileWriter fw = new FileWriter(file);
-      fw.write(description + " " + imgName);
+      fw.write(description);
       fw.close();
 
       // Update profile.txt
@@ -964,11 +964,11 @@ public class Client {
       serverOutput = in.readObject();
     }
 
-      if ( str.equals("Transmission Complete")) {
-        System.out.println("\nThe transmission is completed!");
-      } else {
-        System.out.println("Wrong Server Message but it's a string " + str);
-      }
+    if ( str.equals("Transmission Complete")) {
+      System.out.println("\nThe transmission is completed!");
+    } else {
+      System.out.println("Wrong Server Message but it's a string " + str);
+    }
 
   }
 

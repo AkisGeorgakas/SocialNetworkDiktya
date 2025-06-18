@@ -53,87 +53,87 @@ public class ClientHandler extends Thread {
 
     public void run() {
 
-    try {
-      // Streams
-      outStream = new ObjectOutputStream(clientSocket.getOutputStream());
-      inStream = new ObjectInputStream(clientSocket.getInputStream());
-      outStream.flush();
+        try {
+            // Streams
+            outStream = new ObjectOutputStream(clientSocket.getOutputStream());
+            inStream = new ObjectInputStream(clientSocket.getInputStream());
+            outStream.flush();
 
-      // connection message
-      String clientMessage = (String) inStream.readObject();
-      System.out.println("client.Client message: " + clientMessage);
+            // connection message
+            String clientMessage = (String) inStream.readObject();
+            System.out.println("client.Client message: " + clientMessage);
 
-      // Login Menu
-      while (!loginFlag) {
+            // Login Menu
+            while (!loginFlag) {
 
-        // user login menu Selection
-        String actionCode = (String) inStream.readObject();
-        System.out.println("client.Client message: " + actionCode);
+                // user login menu Selection
+                String actionCode = (String) inStream.readObject();
+                System.out.println("client.Client message: " + actionCode);
 
-        switch (actionCode) {
-
-          case "1":
-            login();
-            break;
-
-          case "2":
-            signup();
-            break;
-
-          case "3":
-            // Exit
-            this.stopClientHandler();
-            break;
-
-        }
-
-      }
-
-        // Main Menu
-        while (!menuFlag) {
-            //Check notifications file
-            checkNotifications();
-
-            // Read menu action
-            String actionCode = (String) inStream.readObject();
-            System.out.println("client.Client message: " + actionCode);
-
-            switch (actionCode) {
+                switch (actionCode) {
 
                 case "1":
-                    handleUpload();
+                    login();
                     break;
 
                 case "2":
-                    handleSearch();
+                    signup();
                     break;
 
                 case "3":
-                    handleFollow();
-                    break;
-
-                case "4":
-                    handleUnfollow();
-                    break;
-
-                case "5":
-                    handleAccessProfile();
-                    break;
-
-                case "6":
-                    //Exit
+                    // Exit
                     this.stopClientHandler();
                     break;
 
-                default:
-                    System.out.println("Wrong input for menu action!");
-                    break;
-            }
-        }
+                }
 
-    } catch (IOException | ClassNotFoundException | InterruptedException e) {
-      e.printStackTrace();
-    }
+            }
+
+            // Main Menu
+            while (!menuFlag) {
+                //Check notifications file
+                checkNotifications();
+
+                // Read menu action
+                String actionCode = (String) inStream.readObject();
+                System.out.println("client.Client message: " + actionCode);
+
+                switch (actionCode) {
+
+                    case "1":
+                        handleUpload();
+                        break;
+
+                    case "2":
+                        handleSearch();
+                        break;
+
+                    case "3":
+                        handleFollow();
+                        break;
+
+                    case "4":
+                        handleUnfollow();
+                        break;
+
+                    case "5":
+                        handleAccessProfile();
+                        break;
+
+                    case "6":
+                        //Exit
+                        this.stopClientHandler();
+                        break;
+
+                    default:
+                        System.out.println("Wrong input for menu action!");
+                        break;
+                }
+            }
+
+        } catch (IOException | ClassNotFoundException | InterruptedException e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -243,145 +243,145 @@ public class ClientHandler extends Thread {
     // Upload
     private void handleUpload() throws IOException, ClassNotFoundException {
 
-    // Check handshake
-    if (uploadHandshake()) {
+        // Check handshake
+        if (uploadHandshake()) {
 
-      System.out.println("Upload sequence initiated");
-      Map<Integer, byte[]> receivedPackets = new TreeMap<>();
+            System.out.println("Upload sequence initiated");
+            Map<Integer, byte[]> receivedPackets = new TreeMap<>();
 
-      String imgNameGiven = (String) inStream.readObject();
-      System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(filename)");
-      String[] imgNameArray = imgNameGiven.split("\\.");
-
-
-      // send client preferred language
-      String languageShort = usersLoader.getUsersLanguage(clientId);
-      outStream.writeObject(languageShort);
-      String languagePref;
-      String secondLanguagePref = "";
-      switch (languageShort) {
-        case "gr":
-          languagePref = "Greek";
-          secondLanguagePref = "English";
-          break;
-        case "en":
-          languagePref = "English";
-          secondLanguagePref = "Greek";
-          break;
-
-        default:
-          languagePref = "error lang " + languageShort;
-          break;
-      }
-
-      String description1 = (String) inStream.readObject();
-      String description2 = (String) inStream.readObject();
-
-      // Receive 10 packets
-      for (int i = 0; i < 10; i++) {
-        Packet packet = (Packet) inStream.readObject();
-        System.out.println("Received packet #" + packet.sequenceNumber);
-        receivedPackets.put(packet.sequenceNumber, packet.data);
-
-        // Send ACK
-        outStream.write(("ACK" + packet.sequenceNumber + "\n").getBytes());
-        outStream.flush();
-      }
-
-      // Reconstruct the image and description
-      ByteArrayOutputStream combined = new ByteArrayOutputStream();
-      for (int i = 0; i < 10; i++) {
-        combined.write(receivedPackets.get(i));
-      }
-
-      byte[] fullData = combined.toByteArray();
-
-      // First byte = description length
-      int descLength = fullData[0] & 0xFF;  // unsigned byte to int
-
-      byte[] descriptionBytes = new byte[descLength];
-      System.arraycopy(fullData, 1, descriptionBytes, 0, descLength);
-
-      byte[] imageBytes = new byte[fullData.length - 1 - descLength];
-      System.arraycopy(fullData, 1 + descLength, imageBytes, 0, imageBytes.length);
-
-      // Save image
-      FileOutputStream fos = new FileOutputStream("server/directories/" + "directory_" + GroupId + clientId + "/" + imgNameGiven);
-
-      // Create txt with description given
-      File file = new File("server/directories/" + "directory_" + GroupId + clientId + "/" + imgNameArray[0] + ".txt");
-      if ( !file.createNewFile() ) {
-          System.out.println("File already exists.");
-      }
-
-      FileWriter fw = new FileWriter(file);
-      fw.write(languagePref + " " +  description1 + " " + imgNameGiven);
-      if(!description2.isEmpty()){
-        fw.write("\n" + secondLanguagePref + " " +  description2 + " " + imgNameGiven);
-      }
-      fw.close();
-
-      String profileTxtpath = "server/profiles/" + "Profile_" + GroupId + clientId + ".txt";
-
-      // lock profile.txt to prevent other clients from editing
-      lockFile(profileTxtpath);
-      // update profile.txt
-      FileWriter proFileServerWriter = new FileWriter(profileTxtpath, true);
-      proFileServerWriter.append("\n");
-      proFileServerWriter.append(clientId).append(" posted ").append(imgNameGiven);
-      proFileServerWriter.close();
-      // unlock profile.txt
-      unlockFile(profileTxtpath);
+            String imgNameGiven = (String) inStream.readObject();
+            System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(filename)");
+            String[] imgNameArray = imgNameGiven.split("\\.");
 
 
-      String[] following = socialLoader.getFollowers(clientId);
-      for (String myFollowing : following) {
+            // send client preferred language
+            String languageShort = usersLoader.getUsersLanguage(clientId);
+            outStream.writeObject(languageShort);
+            String languagePref;
+            String secondLanguagePref = "";
+            switch (languageShort) {
+                case "gr":
+                languagePref = "Greek";
+                secondLanguagePref = "English";
+                break;
+                case "en":
+                languagePref = "English";
+                secondLanguagePref = "Greek";
+                break;
 
-        String otherTxtpath = "server/profiles/" + "Others_" + GroupId + myFollowing + ".txt";
-        // lock others.txt to prevent other clients from editing
-        lockFile(otherTxtpath);
-        // update others.txt
-        FileWriter proFileServerWriter2 = new FileWriter(otherTxtpath, true);
-        proFileServerWriter2.append("\n");
-        proFileServerWriter2.append(clientId).append(" posted ").append(imgNameGiven);
-        proFileServerWriter2.close();
-        // unlock others.txt
-        unlockFile(otherTxtpath);
-      }
+                default:
+                languagePref = "error lang " + languageShort;
+                break;
+            }
 
-      // Write image
-      fos.write(imageBytes);
-      fos.close();
+            String description1 = (String) inStream.readObject();
+            String description2 = (String) inStream.readObject();
+
+            // Receive 10 packets
+            for (int i = 0; i < 10; i++) {
+                Packet packet = (Packet) inStream.readObject();
+                System.out.println("Received packet #" + packet.sequenceNumber);
+                receivedPackets.put(packet.sequenceNumber, packet.data);
+
+                // Send ACK
+                outStream.write(("ACK" + packet.sequenceNumber + "\n").getBytes());
+                outStream.flush();
+            }
+
+            // Reconstruct the image and description
+            ByteArrayOutputStream combined = new ByteArrayOutputStream();
+            for (int i = 0; i < 10; i++) {
+                combined.write(receivedPackets.get(i));
+            }
+
+            byte[] fullData = combined.toByteArray();
+
+            // First byte = description length
+            int descLength = fullData[0] & 0xFF;  // unsigned byte to int
+
+            byte[] descriptionBytes = new byte[descLength];
+            System.arraycopy(fullData, 1, descriptionBytes, 0, descLength);
+
+            byte[] imageBytes = new byte[fullData.length - 1 - descLength];
+            System.arraycopy(fullData, 1 + descLength, imageBytes, 0, imageBytes.length);
+
+            // Save image
+            FileOutputStream fos = new FileOutputStream("server/directories/" + "directory_" + GroupId + clientId + "/" + imgNameGiven);
+
+            // Create txt with description given
+            File file = new File("server/directories/" + "directory_" + GroupId + clientId + "/" + imgNameArray[0] + ".txt");
+            if ( !file.createNewFile() ) {
+                System.out.println("File already exists.");
+            }
+
+            FileWriter fw = new FileWriter(file);
+            fw.write(languagePref + " " +  description1 + " " + imgNameGiven);
+            if(!description2.isEmpty()){
+                fw.write("\n" + secondLanguagePref + " " +  description2 + " " + imgNameGiven);
+            }
+            fw.close();
+
+            String profileTxtpath = "server/profiles/" + "Profile_" + GroupId + clientId + ".txt";
+
+            // lock profile.txt to prevent other clients from editing
+            lockFile(profileTxtpath);
+            // update profile.txt
+            FileWriter proFileServerWriter = new FileWriter(profileTxtpath, true);
+            proFileServerWriter.append("\n");
+            proFileServerWriter.append(clientId).append(" posted ").append(imgNameGiven);
+            proFileServerWriter.close();
+            // unlock profile.txt
+            unlockFile(profileTxtpath);
 
 
-    } else {
-      System.out.println("Handshake Failed! Try again :(");
-    }
+            String[] following = socialLoader.getFollowers(clientId);
+            for (String myFollowing : following) {
+
+                String otherTxtpath = "server/profiles/" + "Others_" + GroupId + myFollowing + ".txt";
+                // lock others.txt to prevent other clients from editing
+                lockFile(otherTxtpath);
+                // update others.txt
+                FileWriter proFileServerWriter2 = new FileWriter(otherTxtpath, true);
+                proFileServerWriter2.append("\n");
+                proFileServerWriter2.append(clientId).append(" posted ").append(imgNameGiven);
+                proFileServerWriter2.close();
+                // unlock others.txt
+                unlockFile(otherTxtpath);
+            }
+
+            // Write image
+            fos.write(imageBytes);
+            fos.close();
+
+
+        } else {
+            System.out.println("Handshake Failed! Try again :(");
+        }
 
     }
 
     // Handshake for upload
     private boolean uploadHandshake() throws IOException, ClassNotFoundException {
 
-    String handshakeResponse = (String) inStream.readObject();
+        String handshakeResponse = (String) inStream.readObject();
 
-    System.out.println("\nHANDSHAKE STEP 1: Client sent request");
+        System.out.println("\nHANDSHAKE STEP 1: Client sent request");
 
-    if (handshakeResponse.equals("Request to upload")) {
+        if (handshakeResponse.equals("Request to upload")) {
 
-      outStream.writeObject("acceptedUpload");
-      System.out.println("\nHANDSHAKE STEP 2: Server sent acknowledgement");
+            outStream.writeObject("acceptedUpload");
+            System.out.println("\nHANDSHAKE STEP 2: Server sent acknowledgement");
 
-      return true;
+            return true;
 
-    } else {
+        } else {
 
-      System.out.println("\nHANDSHAKE REJECTED");
-      outStream.writeObject("rejected");
+            System.out.println("\nHANDSHAKE REJECTED");
+            outStream.writeObject("rejected");
 
-      return false;
+            return false;
 
-    }
+        }
     }
 
 
@@ -389,82 +389,81 @@ public class ClientHandler extends Thread {
     // Search
     private void handleSearch() throws IOException, ClassNotFoundException, InterruptedException {
 
-    // read input image name from client
-    String searchImgName = (String) inStream.readObject();
+        // read input image name from client
+        String searchImgName = (String) inStream.readObject();
 
-    // read input language from client
-    String searchImgLang = (String) inStream.readObject();
+        // read input language from client
+        String searchImgLang = (String) inStream.readObject();
 
-    ArrayList<String> following = socialLoader.getFollowing(clientId);
+        ArrayList<String> following = socialLoader.getFollowing(clientId);
 
-    ArrayList<String[]> results = new ArrayList<>();
-    boolean foundExactMatch = false;
+        ArrayList<String[]> results = new ArrayList<>();
+        boolean foundExactMatch = false;
 
-    String profileTxtpath;
-    for (String tempclientId : following) {
-        profileTxtpath = "server/profiles/Profile_" + GroupId + tempclientId + ".txt";
+        String profileTxtpath;
+        for (String tempclientId : following) {
+            profileTxtpath = "server/profiles/Profile_" + GroupId + tempclientId + ".txt";
 
-        try {
+            try {
 
-            lockFile(profileTxtpath);
+                lockFile(profileTxtpath);
 
-            BufferedReader reader = new BufferedReader(new FileReader(profileTxtpath));
-            String line;
+                BufferedReader reader = new BufferedReader(new FileReader(profileTxtpath));
+                String line;
 
-            while ((line = reader.readLine()) != null && !line.trim().isEmpty()) {
+                while ((line = reader.readLine()) != null && !line.trim().isEmpty()) {
 
-              String[] parts = line.split("\\s+");
-              if (parts.length >= 3) {
-                String photoFullName = line.split("\\s+")[2];
-                if (photoFullName.trim().toLowerCase().contains(searchImgName.trim().toLowerCase())) {
-                  // filter image found by language
-                  String txtPath = "server/directories/directory_" + GroupId + tempclientId + "/" + photoFullName.split("\\.")[0] + ".txt";
-                  lockFile(txtPath);
-                  BufferedReader reader2 = new BufferedReader(new FileReader(txtPath));
-                  String txtline;
-                  boolean foundTxtWithCorrectLanguage = false;
-                  while ((txtline = reader2.readLine()) != null) {
-                    if(txtline.contains(searchImgLang)) {
-                      foundTxtWithCorrectLanguage = true;
-                      break;
-                    }
-                  }
-                  unlockFile(txtPath);
-                  reader2.close();
-                  // --
+                    String[] parts = line.split("\\s+");
+                    if (parts.length >= 3) {
+                        String photoFullName = line.split("\\s+")[2];
+                        if (photoFullName.trim().toLowerCase().contains(searchImgName.trim().toLowerCase())) {
+                            // filter image found by language
+                            String txtPath = "server/directories/directory_" + GroupId + tempclientId + "/" + photoFullName.split("\\.")[0] + ".txt";
+                            lockFile(txtPath);
+                            BufferedReader reader2 = new BufferedReader(new FileReader(txtPath));
+                            String txtline;
+                            boolean foundTxtWithCorrectLanguage = false;
+                            while ((txtline = reader2.readLine()) != null) {
+                                if(txtline.contains(searchImgLang)) {
+                                foundTxtWithCorrectLanguage = true;
+                                break;
+                                }
+                            }
+                            unlockFile(txtPath);
+                            reader2.close();
+                            // --
 
-                  if(foundTxtWithCorrectLanguage){
-                    for (String[] result : results) {
-                        if (result[2].equals(photoFullName)) {
-                            foundExactMatch = true;
-                            break;
+                            if(foundTxtWithCorrectLanguage){
+                                for (String[] result : results) {
+                                    if (result[2].equals(photoFullName)) {
+                                        foundExactMatch = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!foundExactMatch) {
+                                    results.add(new String[]{tempclientId, usersLoader.getUserName(tempclientId), photoFullName});
+                                }
+
+                                foundExactMatch = false;
+                            }
                         }
                     }
-
-                    if (!foundExactMatch) {
-                        results.add(new String[]{tempclientId, usersLoader.getUserName(tempclientId), photoFullName});
-                    }
-
-                    foundExactMatch = false;
-                  }
                 }
-              }
+
+                reader.close();
+                unlockFile(profileTxtpath);
+
+            } catch (Exception e) {
+                unlockFile(profileTxtpath);
+                System.out.println(e.getMessage());
             }
-            reader.close();
-
-            unlockFile(profileTxtpath);
-
-        } catch (Exception e) {
-            unlockFile(profileTxtpath);
-            System.out.println(e.getMessage());
         }
-    }
-    outStream.writeObject(results);
+        outStream.writeObject(results);
 
-    if(!results.isEmpty()){
-      handleDownload(results);
-    }
-
+        if(!results.isEmpty()){
+            handleDownload(results);
+        }
     }
 
     private void handleDownload(ArrayList<String[]> imageInfo) throws ClassNotFoundException, IOException, InterruptedException {
@@ -488,7 +487,6 @@ public class ClientHandler extends Thread {
 
           downloadSomething(imageName, descriptionName, imageInfo.get(userSelectionNum)[0]);
 
-
           lockFile("server/profiles/" + "Profile_" + GroupId + clientId + ".txt");
           // update profile.txt
           FileWriter proFileServerWriter = new FileWriter("server/profiles/" + "Profile_" + GroupId + clientId + ".txt", true);
@@ -507,8 +505,8 @@ public class ClientHandler extends Thread {
 
           // 9.h ------
           String[] filesToCopy = {
-                  imageName,
-                  descriptionName
+            imageName,
+            descriptionName
           };
 
           // making directories
@@ -519,7 +517,7 @@ public class ClientHandler extends Thread {
           // 9.h ------
 
       } else {
-          System.out.println("\nDownload Handshake Failed! Try again :(");
+        System.out.println("\nDownload Handshake Failed! Try again :(");
       }
     }
 
@@ -600,7 +598,6 @@ public class ClientHandler extends Thread {
             // Rewrite the file
             Files.write(path, updatedLines);
             System.out.println("Deleted notification.");
-
         }
     }
 
@@ -624,14 +621,14 @@ public class ClientHandler extends Thread {
       Path targetDir = Paths.get(targetDest);
 
       for (String fileName : filesToCopyArr) {
-          Path sourceFile = sourceDir.resolve(fileName);
-          Path targetFile = targetDir.resolve(fileName);
-          try {
-              Files.copy(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
-              System.out.println("\n" + "Copied: " + sourceFile + " to " + targetFile + "\n");
-          } catch (IOException e) {
-              System.err.println("\n" + "Failed to copy " + fileName + ": " + e.getMessage() + "\n");
-          }
+        Path sourceFile = sourceDir.resolve(fileName);
+        Path targetFile = targetDir.resolve(fileName);
+        try {
+            Files.copy(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("\n" + "Copied: " + sourceFile + " to " + targetFile + "\n");
+        } catch (IOException e) {
+            System.err.println("\n" + "Failed to copy " + fileName + ": " + e.getMessage() + "\n");
+        }
       }
     }
 
@@ -753,6 +750,7 @@ public class ClientHandler extends Thread {
                 outStream.writeObject("access_denied");
                 outStream.flush();
             }
+
             if (((String) inStream.readObject()).equals("no_retry")) flag = false;
         }
     }
@@ -791,7 +789,6 @@ public class ClientHandler extends Thread {
         proFileServerWriter2.append(commentLine);
         proFileServerWriter2.close();
         unlockFile("server/profiles/" + "Profile_" + GroupId + clientId + ".txt");
-
 
         System.out.println("\nComment was successfully added!\n");
     }
@@ -937,12 +934,11 @@ public class ClientHandler extends Thread {
 
             if (imgTag) {
 
-              outStream.writeObject(fileName);
-              descriptionName = fileName.split("//.")[0] + ".txt";
-              downloadSomething(fileName, descriptionName, clientId);
+                outStream.writeObject(fileName);
+                descriptionName = fileName.split("\\.")[0] + ".txt";
+                downloadSomething(fileName, descriptionName, clientId);
 
             }
-
           }
 
           // Send DONE
@@ -1080,7 +1076,11 @@ public class ClientHandler extends Thread {
             socialLoader.acceptFollowRequests(clientId, acceptFrom);
             sendFollowRequests(clientId, sendTo);
             responses.clear();
+
+            // delete follow notifications
+            deleteFollowNotification();
         }
+
         if (!downloadNotifications.isEmpty()) {
 
             for (String notification : downloadNotifications) {
@@ -1121,10 +1121,37 @@ public class ClientHandler extends Thread {
             responses.clear();
 
         }
+
         if (!commentNotifications.isEmpty()) {
           sendCommentResponse(commentNotifications);
         }
     }
+
+    private void deleteFollowNotification() throws IOException {
+        Path path = Paths.get("server/directories/directory_" + GroupId + clientId + "/notifications.txt");
+        List<String> lines = Files.readAllLines(path);
+        List<String> updatedLines = new ArrayList<>();
+
+        boolean notificationFound = false;
+
+        for (String line : lines) {
+
+            String[] parts = line.trim().split("\\s+");
+
+            if ( parts.length > 0 && ( parts[0].equals("follow") )) {
+                notificationFound = true;
+                continue;
+            }
+
+            updatedLines.add(line);
+        }
+
+        if(notificationFound) {
+            // Rewrite the file
+            Files.write(path, updatedLines);
+            System.out.println("Deleted follow notification.");
+        }
+    }    
 
     // General function to handle download from server to client
     private void downloadSomething(String imageName, String descriptionName, String userId) throws IOException {
@@ -1133,9 +1160,12 @@ public class ClientHandler extends Thread {
         String imageDirectory = "server/directories/" + "directory_" + GroupId + userId + "/" + imageName;
         String descriptionDirectory = "server/directories/" + "directory_" + GroupId + userId + "/" + descriptionName;
 
+        System.out.println("Image Directory: " + descriptionDirectory);
+
         Path imagePath = Paths.get(imageDirectory);
 
         String descriptionLine = "";
+        String txtLine = "";
         byte[] descriptionBytes;
         int descriptionLength;
 
@@ -1145,10 +1175,13 @@ public class ClientHandler extends Thread {
 
         // try catch to check if bind txt exists
         try {
-          BufferedReader reader = new BufferedReader(new FileReader(descriptionDirectory));
-          descriptionLine = reader.readLine();
-          reader.close();
-          outStream.writeObject("Selected Picture has bind .txt file.");
+            BufferedReader reader = new BufferedReader(new FileReader(descriptionDirectory));
+            while ((txtLine = reader.readLine()) != null) {
+                descriptionLine += txtLine + "\n";
+            }
+            //   descriptionLine = reader.readLine();
+            reader.close();
+            outStream.writeObject("Selected Picture has bind .txt file.");
 
         } catch (Exception e) {
 
@@ -1171,109 +1204,109 @@ public class ClientHandler extends Thread {
         int packetSize = (int) Math.ceil(fullData.length / 10.0);
         boolean ignoreNext = false;
 
-          stopResending = false;
+        stopResending = false;
 
-          SenderState state = new SenderState(); // Class has the GBN window base & sequence number for the next packet to be sent
+        SenderState state = new SenderState(); // Class has the GBN window base & sequence number for the next packet to be sent
 
-          int windowSize = 3;
-          Timer timer = new Timer();
-          Map<Integer, Packet> packetBuffer = new HashMap<>();
-          Set<String> receivedAcks = new HashSet<>();
+        int windowSize = 3;
+        Timer timer = new Timer();
+        Map<Integer, Packet> packetBuffer = new HashMap<>();
+        Set<String> receivedAcks = new HashSet<>();
 
-          while (state.base < 10) {
-              while (state.nextSeqNum < state.base + windowSize && state.nextSeqNum < 10) {
-                  int start = state.nextSeqNum * packetSize;
-                  int end = Math.min(start + packetSize, fullData.length);
-                  byte[] chunk = new byte[end - start];
+        while (state.base < 10) {
+            while (state.nextSeqNum < state.base + windowSize && state.nextSeqNum < 10) {
+                int start = state.nextSeqNum * packetSize;
+                int end = Math.min(start + packetSize, fullData.length);
+                byte[] chunk = new byte[end - start];
 
-                  System.arraycopy(fullData, start, chunk, 0, chunk.length);
-                  Packet packet = new Packet(state.nextSeqNum, chunk);
+                System.arraycopy(fullData, start, chunk, 0, chunk.length);
+                Packet packet = new Packet(state.nextSeqNum, chunk);
 
-                  System.out.println("Sending packet " + state.nextSeqNum);
+                System.out.println("Sending packet " + state.nextSeqNum);
 
-                  outStream.writeObject(packet);
-                  outStream.flush();
+                outStream.writeObject(packet);
+                outStream.flush();
 
-                  packetBuffer.put(state.nextSeqNum, packet); // Link sequence number to packet
+                packetBuffer.put(state.nextSeqNum, packet); // Link sequence number to packet
 
-                  if (state.base == state.nextSeqNum) {
-                      // Start timer
-                      startTimer(timer, () -> {
-                          if (stopResending) return;  // Prevent resends after GBN ends
-                          synchronized (state) {
-                              if (state.base >= 10) return; // Make sure you don't resend anything after base becomes 10
-                              resendPackets(state, packetBuffer, outStream);
-                          }
-                      });
-                  }
+                if (state.base == state.nextSeqNum) {
+                    // Start timer
+                    startTimer(timer, () -> {
+                        if (stopResending) return;  // Prevent resends after GBN ends
+                        synchronized (state) {
+                            if (state.base >= 10) return; // Make sure you don't resend anything after base becomes 10
+                            resendPackets(state, packetBuffer, outStream);
+                        }
+                    });
+                }
 
-                  state.nextSeqNum++;
-              }
+                state.nextSeqNum++;
+            }
 
-              int originalTimeout = clientSocket.getSoTimeout();
-              try {
-                  clientSocket.setSoTimeout(3000);
-                  Object ackObj = inStream.readObject();
+            int originalTimeout = clientSocket.getSoTimeout();
+            try {
+                clientSocket.setSoTimeout(3000);
+                Object ackObj = inStream.readObject();
 
-                  if (ackObj instanceof String ack && ack.startsWith("ACK")) {
-                      int ackNum = Integer.parseInt(ack.substring(3));
-                      System.out.println("Received but not yet accepted: " + ack);
+                if (ackObj instanceof String ack && ack.startsWith("ACK")) {
+                    int ackNum = Integer.parseInt(ack.substring(3));
+                    System.out.println("Received but not yet accepted: " + ack);
 
-                      if (!receivedAcks.contains(ack)) {
-                          receivedAcks.add(ack); // If Server has not received this ACK before add it to receivedAcks
-                          System.out.println("Received and ACCEPTED: ACK" + ackNum);
-                      }
+                    if (!receivedAcks.contains(ack)) {
+                        receivedAcks.add(ack); // If Server has not received this ACK before add it to receivedAcks
+                        System.out.println("Received and ACCEPTED: ACK" + ackNum);
+                    }
 
-                      if (ackNum == state.base) {
-                          // Increase GBN window
-                          state.base++;
+                    if (ackNum == state.base) {
+                        // Increase GBN window
+                        state.base++;
 
-                          while (receivedAcks.contains("ACK" + state.base)) {
-                              state.base++;
-                          }
+                        while (receivedAcks.contains("ACK" + state.base)) {
+                            state.base++;
+                        }
 
-                          // When base becomes 10, we have sent all packets from 0 to 9
-                          if (state.base == 10) {
-                              timer.cancel();
-                              break;
-                          } else {
-                              timer.cancel();
-                              startTimer(timer, () -> {
-                                  if (stopResending) return;  // Prevent resends after GBN ends
-                                  synchronized (state) {
-                                      if (state.base >= 10) return; // Make sure you don't resend anything after base becomes 10
-                                      resendPackets(state, packetBuffer, outStream);
-                                  }
-                              });                      }
-                      }
-                  }
+                        // When base becomes 10, we have sent all packets from 0 to 9
+                        if (state.base == 10) {
+                            timer.cancel();
+                            break;
+                        } else {
+                            timer.cancel();
+                            startTimer(timer, () -> {
+                                if (stopResending) return;  // Prevent resends after GBN ends
+                                synchronized (state) {
+                                    if (state.base >= 10) return; // Make sure you don't resend anything after base becomes 10
+                                    resendPackets(state, packetBuffer, outStream);
+                                }
+                            });                      }
+                    }
+                }
 
-              } catch (SocketTimeoutException | ClassNotFoundException e) {
+            } catch (SocketTimeoutException | ClassNotFoundException e) {
 
-                  System.out.println("ACK timeout! Resending from packet " + state.base);
+                System.out.println("ACK timeout! Resending from packet " + state.base);
 
-                  // Retransmit from base
-                  for (int i = state.base; i < state.nextSeqNum; i++) {
-                      Packet resendPacket = packetBuffer.get(i);
-                      outStream.writeObject(resendPacket);
-                      outStream.flush();
-                      System.out.println("Resent packet " + i);
-                  }
-              } finally {
-                  try {
-                      stopResending = true;
-                      timer.cancel();  // To catch timeout exits or exceptions
-                      timer.purge();
-                      clientSocket.setSoTimeout(originalTimeout); // Restore timeout
-                  } catch (SocketException e) {
-                      e.printStackTrace();
-                  }
-              }
-          }
+                // Retransmit from base
+                for (int i = state.base; i < state.nextSeqNum; i++) {
+                    Packet resendPacket = packetBuffer.get(i);
+                    outStream.writeObject(resendPacket);
+                    outStream.flush();
+                    System.out.println("Resent packet " + i);
+                }
+            } finally {
+                try {
+                    stopResending = true;
+                    timer.cancel();  // To catch timeout exits or exceptions
+                    timer.purge();
+                    clientSocket.setSoTimeout(originalTimeout); // Restore timeout
+                } catch (SocketException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
 
-          System.out.println("--------------------------------------------------Done-----------------------------------------------------");
-          outStream.writeObject("Transmission Complete");
-          outStream.flush();
+        System.out.println("--------------------------------------------------Done-----------------------------------------------------");
+        outStream.writeObject("Transmission Complete");
+        outStream.flush();
     }
 
     // Starts timer for timeout
@@ -1306,6 +1339,7 @@ public class ClientHandler extends Thread {
 
                 System.out.println("Resent packet " + i);
             }
+            
         } catch (IOException e) {
             e.printStackTrace();
         }
