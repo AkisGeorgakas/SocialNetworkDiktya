@@ -1010,12 +1010,16 @@ public class Client {
       fos.write(imageBytes);
       fos.close();
 
-    Object obj = in.readObject();
+    Object serverOutput = in.readObject();
+    while (!(serverOutput instanceof String str)){
+      System.out.println("Wrong Server Message, transmission still open. Message was "+ serverOutput);
+      serverOutput = in.readObject();
+    }
 
-      if (obj instanceof String str && str.equals("Transmission Complete")) {
+      if ( str.equals("Transmission Complete")) {
         System.out.println("The transmission is completed!");
       }else {
-        System.out.println("Wrong Server Message, transmission still open");
+        System.out.println("Wrong Server Message but it's a string " + str);
       }
 
   }

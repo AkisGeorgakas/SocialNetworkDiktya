@@ -43,7 +43,7 @@ public class ClientHandler extends Thread {
   private static final ConcurrentHashMap<String, ReentrantLock> fileLocks = new ConcurrentHashMap<>();
 
   //Volatile flag to stop GoBackN packets after download is completed
-  volatile boolean stopResending = false;
+  private volatile boolean stopResending = false;
 
 
     // Constructor
@@ -1332,8 +1332,9 @@ public class ClientHandler extends Thread {
               }
           } finally {
               try {
-
+                  stopResending = true;
                   timer.cancel();  // To catch timeout exits or exceptions
+                  timer.purge();
                   clientSocket.setSoTimeout(originalTimeout); // Restore timeout
               } catch (SocketException e) {
                   e.printStackTrace();
@@ -1343,7 +1344,7 @@ public class ClientHandler extends Thread {
 
       outStream.flush();
 
-      stopResending = true;
+
       System.out.println("--------------------------------------------------Done-----------------------------------------------------");
       outStream.writeObject("Transmission Complete");
       outStream.flush();
