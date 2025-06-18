@@ -421,10 +421,10 @@ public class ClientHandler extends Thread {
                             String txtPath = "server/directories/directory_" + GroupId + tempclientId + "/" + photoFullName.split("\\.")[0] + ".txt";
                             lockFile(txtPath);
                             BufferedReader reader2 = new BufferedReader(new FileReader(txtPath));
-                            String txtline;
+                            String txtLine;
                             boolean foundTxtWithCorrectLanguage = false;
-                            while ((txtline = reader2.readLine()) != null) {
-                                if(txtline.contains(searchImgLang)) {
+                            while ((txtLine = reader2.readLine()) != null) {
+                                if(txtLine.contains(searchImgLang)) {
                                 foundTxtWithCorrectLanguage = true;
                                 break;
                                 }
@@ -719,13 +719,13 @@ public class ClientHandler extends Thread {
                 String line;
 
                 // Keep all available images to download from profile
-                ArrayList<String[]> imgsToDownload = new ArrayList<>();
+                ArrayList<String[]> imagesToDownload = new ArrayList<>();
                 while ((line = reader.readLine()) != null) {
                     ArrayList<String> splitLine = new ArrayList<>(Arrays.asList(line.split("\\s+")));
 
                     if (splitLine.size() == 3) {
                         if (splitLine.get(1).equals("posted") || splitLine.get(1).equals("reposted")) {
-                            imgsToDownload.add(new String[]{selectedID, profileName, splitLine.get(2)});
+                            imagesToDownload.add(new String[]{selectedID, profileName, splitLine.get(2)});
                         }
                     }
                 }
@@ -733,14 +733,14 @@ public class ClientHandler extends Thread {
                 unlockFile("server/profiles/Profile_" + GroupId + selectedID + ".txt");
 
                 // Send img list to client
-                outStream.writeObject(imgsToDownload);
+                outStream.writeObject(imagesToDownload);
                 outStream.flush();
 
                 // Read which action user wants to perform [download/comment]
                 String selectedAction = (String)inStream.readObject();
 
                 if(selectedAction.equals("download")){
-                    handleDownload(imgsToDownload);
+                    handleDownload(imagesToDownload);
                 } else {
                     handleComment(selectedID);
                 }
@@ -1164,7 +1164,7 @@ public class ClientHandler extends Thread {
 
         Path imagePath = Paths.get(imageDirectory);
 
-        String descriptionLine = "";
+        StringBuilder descriptionLine = new StringBuilder();
         String txtLine = "";
         byte[] descriptionBytes;
         int descriptionLength;
@@ -1177,7 +1177,7 @@ public class ClientHandler extends Thread {
         try {
             BufferedReader reader = new BufferedReader(new FileReader(descriptionDirectory));
             while ((txtLine = reader.readLine()) != null) {
-                descriptionLine += txtLine + "\n";
+                descriptionLine.append(txtLine).append("\n");
             }
             //   descriptionLine = reader.readLine();
             reader.close();
@@ -1191,7 +1191,7 @@ public class ClientHandler extends Thread {
 
         unlockFile(descriptionDirectory);
 
-        descriptionBytes = descriptionLine.getBytes();
+        descriptionBytes = descriptionLine.toString().getBytes();
         descriptionLength = descriptionBytes.length;
 
         // Combine data
@@ -1259,11 +1259,10 @@ public class ClientHandler extends Thread {
 
                     if (ackNum == state.base) {
                         // Increase GBN window
-                        state.base++;
 
-                        while (receivedAcks.contains("ACK" + state.base)) {
+                        do {
                             state.base++;
-                        }
+                        } while (receivedAcks.contains("ACK" + state.base));
 
                         // When base becomes 10, we have sent all packets from 0 to 9
                         if (state.base == 10) {

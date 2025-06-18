@@ -31,10 +31,10 @@ public class Client {
   // Scanner
   private final Scanner myObj = new Scanner(System.in);
 
-  // Group Id
+  // Group ID
   private final String GroupId = "45";
 
-  // Client Id
+  // Client ID
   private String clientId;
 
   // Constructor
@@ -234,7 +234,7 @@ public class Client {
 
     // Ask for language
     String language = "";
-    System.out.println("\nPrefered language:\n1) Greek\n2) English\nChoose a language by typing 1 or 2:");
+    System.out.println("\nPreferred language:\n1) Greek\n2) English\nChoose a language by typing 1 or 2:");
     while (true) {
       String languageCode = myObj.nextLine();
       if (Objects.equals(languageCode, "1")) {
@@ -264,7 +264,7 @@ public class Client {
       System.out.println("\nSuccessful sign up!\nYou are now logged in.\nWelcome client " + clientId + ".\n");
       loginFlag = true;
 
-      fixNewUserlFiles();
+      fixNewUserFiles();
 
     }else{
       System.out.println("\nFailed to sign up! Username already exists.\nPlease try different username.\n");
@@ -296,7 +296,7 @@ public class Client {
 
         boolean imgTag = pathname.contains(".jpg") || pathname.contains(".png") || pathname.contains(".jpeg") || pathname.contains(".JPG") || pathname.contains(".PNG") || pathname.contains(".JPEG");
 
-        // Check if input inludes smt dot and is an image type AND if it is and image
+        // Check if input includes smt dot and is an image type AND if it is an image
         if((pathname.split("\\.").length == 2) && imgTag){
           break;
         }else{
@@ -312,7 +312,7 @@ public class Client {
       out.writeObject(pathname);
       System.out.println("HANDSHAKE STEP 3: Client sent sync acknowledgement(filename)");
 
-      // Receive from server users prefered language
+      // Receive from server users preferred language
       String languageShort = (String) in.readObject();
       String languagePref = "";
       String secondLanguagePref = "";
@@ -338,8 +338,8 @@ public class Client {
 
       byte[] imageBytes = Files.readAllBytes(imageFile.toPath());
 
-      // Ask for description in users prefered language
-      System.out.println("\nEnter a description please in your preffered language (" + languagePref + ")" + " :");
+      // Ask for description in users preferred language
+      System.out.println("\nEnter a description please in your preferred language (" + languagePref + ")" + " :");
       String description1 = myObj.nextLine();
 
       // Ask for description in users other language
@@ -360,7 +360,7 @@ public class Client {
       // Write descriptions fot both languages if exists to file
       FileWriter fw = new FileWriter(file);
       fw.write(languagePref + " " +  description1 + " " + pathname);
-      if(description2.length() > 0){
+      if(!description2.isEmpty()){
         fw.write("\n" + secondLanguagePref + " " +  description2 + " " + pathname);
       }
       fw.close();
@@ -458,20 +458,11 @@ public class Client {
           }
       }
 
-      String languageClear = "";
-      switch (languageImgInput) {
-        case "1":
-          languageClear = "Greek";
-          break;
-
-        case "2":
-          languageClear = "English";
-          break;
-
-        default:
-          languageClear = "";
-          break;
-      }
+      String languageClear = switch (languageImgInput) {
+          case "1" -> "Greek";
+          case "2" -> "English";
+          default -> "";
+      };
 
       // send client's keyword and language  to the server
       out.writeObject(searchImgInput);
@@ -611,7 +602,7 @@ public class Client {
       System.out.println("\nWhich profile would you like to access? Insert a name from the list:");
       for (int i = 0; i < usersList.size(); i++) System.out.println((i + 1) + ". " + usersList.toArray()[i]);
 
-      //Check for valid choice name from the userlist
+      //Check for valid choice name from the user list
       String choice = "";
       while (true) {
 
@@ -640,18 +631,18 @@ public class Client {
 
 
 
-        ArrayList<String[]> imgsToDownload = (ArrayList<String[]>) in.readObject();
+        ArrayList<String[]> imagesToDownload = (ArrayList<String[]>) in.readObject();
 
         System.out.println("The following images are available for download and/or comment:");
-        for (int i=0; i<imgsToDownload.size(); i++) {
-          System.out.println(i+1 + ". " + imgsToDownload.get(i)[2]);
+        for (int i = 0; i< imagesToDownload.size(); i++) {
+          System.out.println(i+1 + ". " + imagesToDownload.get(i)[2]);
         }
 
         String[] splitChoice;
         int imageNumber;
         String action;
         do {
-          System.out.println("Start your input with the image number [1-" + imgsToDownload.size() + "]. After that write the action [download/comment].");
+          System.out.println("Start your input with the image number [1-" + imagesToDownload.size() + "]. After that write the action [download/comment].");
 
           choice = myObj.nextLine(); // Read user input
 
@@ -667,16 +658,16 @@ public class Client {
           action = splitChoice[1];
 
           // Check whether user input is valid
-        } while ( ! ( (imageNumber >= 1 && imageNumber <= imgsToDownload.size())
+        } while ( ! ( (imageNumber >= 1 && imageNumber <= imagesToDownload.size())
                 && ( action.equals("download") || action.equals("comment") ) )
         );
 
 
         out.writeObject(action);
         if ( action.equals("download") ){
-          downloadImg(imageNumber-1, imgsToDownload.get(imageNumber-1));
+          downloadImg(imageNumber-1, imagesToDownload.get(imageNumber-1));
         } else{
-          handleComment(imageNumber-1, imgsToDownload.get(imageNumber-1));
+          handleComment(imageNumber-1, imagesToDownload.get(imageNumber-1));
         }
 
 
@@ -819,7 +810,7 @@ public class Client {
     // Get all the files from the folder
     File[] files = folder.listFiles();
 
-    // Check if it is file and if it is delete it
+    // Check if it is file and if it is, delete it
     if(files!=null) {
 
       for(File f: files) {
@@ -902,7 +893,7 @@ public class Client {
             continue;
           }
 
-          System.out.println("Sending Ack "+ expectedSeqNum + "");
+          System.out.println("Sending Ack "+ expectedSeqNum + " ");
           receivedPackets.put(packet.sequenceNumber, packet.data);
 
           out.writeObject("ACK" + packet.sequenceNumber);
@@ -997,7 +988,7 @@ public class Client {
   }
 
   // Clean all client files for new user
-  private void fixNewUserlFiles(){
+  private void fixNewUserFiles(){
 
     // Empty client directories
     emptyFolder(new File("client/directory"));
