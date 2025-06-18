@@ -5,16 +5,13 @@ import common.Packet;
 import java.net.*;
 import java.io.*;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.TreeMap;
-import java.util.concurrent.TimeUnit;
 
 public class Client {
 
@@ -920,8 +917,7 @@ public class Client {
         }
       }
 
-
-    // Reconstruct the image and description
+      // Reconstruct the image and description
       ByteArrayOutputStream combined = new ByteArrayOutputStream();
       for (int i = 0; i < 10; i++) {
           combined.write(receivedPackets.get(i));
@@ -951,7 +947,7 @@ public class Client {
       fw.write(description + " " + imgName);
       fw.close();
 
-      // update profile.txt
+      // Update profile.txt
       if(!isLoginOrSignup){
         FileWriter proFileServerWriter = new FileWriter("client/profiles/"+ "Profile_" + GroupId + clientId + ".txt"	,true);
         proFileServerWriter.append("\n");
@@ -970,7 +966,7 @@ public class Client {
 
       if ( str.equals("Transmission Complete")) {
         System.out.println("\nThe transmission is completed!");
-      }else {
+      } else {
         System.out.println("Wrong Server Message but it's a string " + str);
       }
 

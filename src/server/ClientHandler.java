@@ -148,7 +148,7 @@ public class ClientHandler extends Thread {
     String userName = (String) inStream.readObject();
     String password = (String) inStream.readObject();
 
-    // Search for client's ID and succcessfully login, from users.txt using username and password
+    // Search for client's ID and successfully login, from users.txt using username and password
     clientId = usersLoader.checkUser(userName, password);
 
     if (clientId != null) {
@@ -168,9 +168,8 @@ public class ClientHandler extends Thread {
       Server.clientDirectory.put(clientId, clientSocket.getRemoteSocketAddress());
       System.out.println("\nOnline clients: ");
       Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
-      System.out.println("");
 
-      updateClientsDirecotryFiles();
+      updateClientsDirectoryFiles();
       updateClientProfileFiles();
 
     } else {
@@ -185,62 +184,60 @@ public class ClientHandler extends Thread {
     // Login Menu Option 2
     // Sign Up
     private void signup() throws IOException, ClassNotFoundException {
-    // Read username and password
-    String userName = (String) inStream.readObject();
-    String password = (String) inStream.readObject();
-    String language = (String) inStream.readObject();
+        // Read username and password
+        String userName = (String) inStream.readObject();
+        String password = (String) inStream.readObject();
+        String language = (String) inStream.readObject();
 
-    // Check if username already exists
-    if (usersLoader.getUserInfo(userName).isEmpty()) {
+        // Check if username already exists
+        if (usersLoader.getUserInfo(userName).isEmpty()) {
 
-      // Generate random client ID and check to be unique
-      String tempId = Integer.toString((int) (Math.random() * 101));
-      while (usersLoader.getUserName(tempId) != "") {
-        tempId = Integer.toString((int) (Math.random() * 101));
-      }
+          // Generate random client ID and check to be unique
+          String tempId = Integer.toString((int) (Math.random() * 101));
+          while (usersLoader.getUserName(tempId).isEmpty()) {
+            tempId = Integer.toString((int) (Math.random() * 101));
+          }
 
-      clientId = tempId;
+          clientId = tempId;
 
-      // Add user to users.txt
-      String formattedInfo = userName + ":" + password + "," + clientId + "," + language;
-      usersLoader.addUser(formattedInfo);
+          // Add user to users.txt
+          String formattedInfo = userName + ":" + password + "," + clientId + "," + language;
+          usersLoader.addUser(formattedInfo);
 
-      // Send success signup response
-      outStream.writeObject("SuccessSignUp");
-      outStream.flush();
+          // Send success signup response
+          outStream.writeObject("SuccessSignUp");
+          outStream.flush();
 
-      // Send client ID
-      outStream.writeObject(clientId);
-      outStream.flush();
+          // Send client ID
+          outStream.writeObject(clientId);
+          outStream.flush();
 
 
 
-      // Save client's IP and port to server
-      Server.clientDirectory.put(clientId, clientSocket.getRemoteSocketAddress());
-      System.out.println("\nOnline clients: ");
-      Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
-      System.out.println("");
+          // Save client's IP and port to server
+          Server.clientDirectory.put(clientId, clientSocket.getRemoteSocketAddress());
+          System.out.println("\nOnline clients: ");
+          Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
 
-      fixNewUserlFiles();
+          fixNewUserFiles();
 
-      // Stop login menu
-      loginFlag = true;
+          // Stop login menu
+          loginFlag = true;
 
-    } else {
-      // Send failed signup response
-      outStream.writeObject("Failed");
-      outStream.flush();
+        } else {
+          // Send failed signup response
+          outStream.writeObject("Failed");
+          outStream.flush();
 
-      // resetSignup
-      this.signup();
-    }
+          // resetSignup
+          this.signup();
+        }
     }
 
     // ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
     // MAIN MENU -----------------------------------------------------------------------------------------------------------------------------------------------
-
 
     // Menu option 1
     // Upload
@@ -257,10 +254,10 @@ public class ClientHandler extends Thread {
       String[] imgNameArray = imgNameGiven.split("\\.");
 
 
-      // send client preffered language
+      // send client preferred language
       String languageShort = usersLoader.getUsersLanguage(clientId);
       outStream.writeObject(languageShort);
-      String languagePref = "";
+      String languagePref;
       String secondLanguagePref = "";
       switch (languageShort) {
         case "gr":
@@ -304,7 +301,6 @@ public class ClientHandler extends Thread {
 
       byte[] descriptionBytes = new byte[descLength];
       System.arraycopy(fullData, 1, descriptionBytes, 0, descLength);
-      String description = new String(descriptionBytes);
 
       byte[] imageBytes = new byte[fullData.length - 1 - descLength];
       System.arraycopy(fullData, 1 + descLength, imageBytes, 0, imageBytes.length);
@@ -318,12 +314,9 @@ public class ClientHandler extends Thread {
           System.out.println("File already exists.");
       }
 
-      // FileWriter fw = new FileWriter(file);
-      // fw.write(description + " " + imgNameGiven);
-      // fw.close();
       FileWriter fw = new FileWriter(file);
       fw.write(languagePref + " " +  description1 + " " + imgNameGiven);
-      if(description2.length() > 0){
+      if(!description2.isEmpty()){
         fw.write("\n" + secondLanguagePref + " " +  description2 + " " + imgNameGiven);
       }
       fw.close();
@@ -362,11 +355,10 @@ public class ClientHandler extends Thread {
 
 
     } else {
-      System.out.println("Hanshake Failed! Try again :(");
+      System.out.println("Handshake Failed! Try again :(");
     }
 
     }
-
 
     // Handshake for upload
     private boolean uploadHandshake() throws IOException, ClassNotFoundException {
@@ -405,9 +397,8 @@ public class ClientHandler extends Thread {
 
     ArrayList<String> following = socialLoader.getFollowing(clientId);
 
-    ArrayList<String[]> results = new ArrayList<String[]>();
+    ArrayList<String[]> results = new ArrayList<>();
     boolean foundExactMatch = false;
-
 
     String profileTxtpath;
     for (String tempclientId : following) {
@@ -419,12 +410,6 @@ public class ClientHandler extends Thread {
 
             BufferedReader reader = new BufferedReader(new FileReader(profileTxtpath));
             String line;
-
-            // FOR TEST PURPOSES WE LEAVE THIS TO CHECK LOCKED FILE
-            // if(this.tempclientId.equals("9432")) {
-            //   sleep(10000);
-            // }
-
 
             while ((line = reader.readLine()) != null && !line.trim().isEmpty()) {
 
@@ -534,7 +519,7 @@ public class ClientHandler extends Thread {
           // 9.h ------
 
       } else {
-          System.out.println("\nDownload Hanshake Failed! Try again :(");
+          System.out.println("\nDownload Handshake Failed! Try again :(");
       }
     }
 
@@ -562,7 +547,7 @@ public class ClientHandler extends Thread {
 
                 String line;
                 String notificationType;
-                String notificationPhotoName;
+
                 while ((line = reader.readLine()) != null) {
                     if (line.trim().isEmpty()) continue;
 
@@ -583,9 +568,8 @@ public class ClientHandler extends Thread {
 
             } catch (FileNotFoundException e) {
                 throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
+
             unlockFile(myNotificationsPath);
         }
 
@@ -652,16 +636,17 @@ public class ClientHandler extends Thread {
     }
 
 
-    // Menu option 3
+    // Menu Option 3
+    // Follow
     private void handleFollow() throws IOException, ClassNotFoundException {
-      String response = "";
+      String response;
       // read input from client
       String userToFollow = (String) inStream.readObject();
       String userToFollowId = usersLoader.getUserId(userToFollow);
       if (userToFollowId.isEmpty()){
           response = "User not found! Try again.";
       }else{
-          ArrayList<String> userIdStructure = new ArrayList<String>();
+          ArrayList<String> userIdStructure = new ArrayList<>();
           userIdStructure.add(userToFollowId);
           sendFollowRequests(clientId,userIdStructure);
           response = "Follow request sent successfully!";
@@ -685,7 +670,7 @@ public class ClientHandler extends Thread {
 
     // Menu option 4
     private void handleUnfollow() throws ClassNotFoundException, IOException{
-      String response = "";
+      String response;
 
       // read input from client
       String userToUnFollow = (String) inStream.readObject();
@@ -732,13 +717,14 @@ public class ClientHandler extends Thread {
                 outStream.writeObject(content);
                 outStream.flush();
 
+                lockFile("server/profiles/Profile_" + GroupId + selectedID + ".txt");
                 BufferedReader reader = new BufferedReader(new FileReader("server/profiles/Profile_" + GroupId + selectedID + ".txt"));
                 String line;
 
                 // Keep all available images to download from profile
                 ArrayList<String[]> imgsToDownload = new ArrayList<>();
                 while ((line = reader.readLine()) != null) {
-                    ArrayList<String> splitLine = new ArrayList<String>(Arrays.asList(line.split("\\s+")));
+                    ArrayList<String> splitLine = new ArrayList<>(Arrays.asList(line.split("\\s+")));
 
                     if (splitLine.size() == 3) {
                         if (splitLine.get(1).equals("posted") || splitLine.get(1).equals("reposted")) {
@@ -746,6 +732,8 @@ public class ClientHandler extends Thread {
                         }
                     }
                 }
+
+                unlockFile("server/profiles/Profile_" + GroupId + selectedID + ".txt");
 
                 // Send img list to client
                 outStream.writeObject(imgsToDownload);
@@ -757,7 +745,7 @@ public class ClientHandler extends Thread {
                 if(selectedAction.equals("download")){
                     handleDownload(imgsToDownload);
                 } else {
-                    handleComment(imgsToDownload,selectedID);
+                    handleComment(selectedID);
                 }
 
 
@@ -769,7 +757,7 @@ public class ClientHandler extends Thread {
         }
     }
 
-    private void handleComment(ArrayList<String[]> imageInfo, String uploaderId) throws IOException, ClassNotFoundException, InterruptedException {
+    private void handleComment(String uploaderId) throws IOException, ClassNotFoundException, InterruptedException {
         System.out.println("\nComment Function Initiated.\n");
 
         String imageName = (String)inStream.readObject();
@@ -892,218 +880,8 @@ public class ClientHandler extends Thread {
 
     }
 
-    // ---------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-    // GENERAL FUNCTIONS -------------------------------------------------------------------------------------------------------------------
-
-    // Sync all files from server to client
-    private void updateClientsDirecotryFiles() throws IOException {
-
-    System.out.println("Synchronizing files with client...");
-
-    File directoryFolder = new File("server/directories/directory_" + GroupId + clientId);
-    File[] files = directoryFolder.listFiles();
-
-    boolean imgTag = false;
-    String fileName = "";
-    String descriptionName = "";
-
-    if (files != null) {
-
-      for (File file : files) {
-        fileName = file.getName();
-        imgTag = fileName.contains(".jpg") || fileName.contains(".png") || fileName.contains(".jpeg") || fileName.contains(".JPG") || fileName.contains(".PNG") || fileName.contains(".JPEG");
-
-        if (imgTag) {
-
-          outStream.writeObject(fileName);
-          descriptionName = fileName.split("//.")[0] + ".txt";
-          downloadSomething(fileName, descriptionName, clientId);
-
-        }
-
-      }
-
-      // Send DONE
-      outStream.writeObject("DONE");
-
-    } else {
-      outStream.writeObject("NotFound");
-    }
-
-    }
-
-    // Sign out client and terminate everything necessary
-    public void stopClientHandler() {
-
-    try {
-      // Remove client from online clients in Server
-      Server.clientDirectory.remove(clientId);
-      System.out.println("\nOnline clients: ");
-      Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
-      System.out.println("\n");
-
-      loginFlag = true;
-      menuFlag = true;
-      inStream.close();
-      outStream.close();
-
-      System.out.println("Connection closed");
-
-    } catch (IOException e) {
-      System.out.println(e.getMessage());
-    }
-
-    }
-
-    // Check notifications in notifications.txt after successful login
-    private void checkNotifications() throws IOException, ClassNotFoundException {
-
-    ArrayList<String> followNotifications = new ArrayList<String>();
-    ArrayList<String> downloadNotifications = new ArrayList<String>();
-    ArrayList<String[]> commentNotifications = new ArrayList<String[]>();
-    String notificationsPath = "server/directories/directory_" + GroupId + clientId + "/notifications.txt";
-
-    lockFile(notificationsPath);
-    try (BufferedReader reader = new BufferedReader(new FileReader(notificationsPath))) {
-
-      String line;
-        String notificationType;
-        String notificationSenderId;
-        String notificationPhotoName;
-        String comment;
-      while ((line = reader.readLine()) != null) {
-        if ( line.trim().isEmpty() ) continue;
-
-        notificationType = line.split("\\s+")[0];
-        notificationSenderId = line.split("\\s+")[1];
-
-        if(notificationType.equals("follow")){
-            followNotifications.add(notificationSenderId);
-
-        } else if (notificationType.equals("download")) {
-            notificationPhotoName = line.split("\\s+")[2];
-            downloadNotifications.add(notificationSenderId + " " + notificationPhotoName);
-
-        } else if (notificationType.equals("comment")){
-            notificationPhotoName = line.split("\\s+")[2];
-            comment = line.split("\\s+")[3];
-            if (Math.random() < 0.5) {
-                System.out.println("Comment Rejected.");
-                commentNotifications.add(new String[]{notificationSenderId, "RejectedComment " + notificationPhotoName + " " + clientId + " " + comment });
-            } else {
-                System.out.println("Comment Accepted.");
-                commentNotifications.add(new String[]{notificationSenderId, "AcceptedComment " + notificationPhotoName + " " + clientId + " " + comment });
-            }
-        }
-      }
-
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    unlockFile(notificationsPath);
-
-    // send notifications to client
-    outStream.writeObject(followNotifications);
-    outStream.writeObject(downloadNotifications);
-    outStream.writeObject(commentNotifications);
-
-    //All notifications have been read. We empty the notifications.txt file
-    try (FileWriter writer = new FileWriter(notificationsPath, false)) {
-        // Nothing to write – this will truncate the file to zero length
-        // writer.close();
-    } catch (IOException e) {
-        e.printStackTrace();
-    }
-
-
-    ArrayList<String> responses = new ArrayList<String>();
-
-    if (!followNotifications.isEmpty()) {
-
-        for (String notification : followNotifications) {
-            responses.add((String) inStream.readObject());
-        }
-
-        String[] splitResponse = {"", ""};
-        ArrayList<String> acceptFrom = new ArrayList<String>();
-        ArrayList<String> sendTo = new ArrayList<String>();
-
-        for (String response : responses) {
-
-            splitResponse = response.split("\\s+");
-            switch (splitResponse[0]) {
-
-                case "1":
-                    System.out.println("Client " + clientId + " accepted follow request from " + splitResponse[1]);
-                    acceptFrom.add(splitResponse[1]);
-                    break;
-
-                case "2":
-                    //reject
-                    System.out.println("Client " + clientId + " rejected follow request from " + splitResponse[1]);
-                    break;
-
-                case "3":
-                    System.out.println("Client " + clientId + " accepted and sent back follow request from " + splitResponse[1]);
-                    acceptFrom.add(splitResponse[1]);
-                    sendTo.add(splitResponse[1]);
-                    break;
-            }
-        }
-
-        socialLoader.acceptFollowRequests(clientId, acceptFrom);
-        sendFollowRequests(clientId, sendTo);
-        responses.clear();
-    }
-    if (!downloadNotifications.isEmpty()) {
-
-        for (String notification : downloadNotifications) {
-            responses.add((String) inStream.readObject());
-        }
-
-        String[] splitDownloadResponse = {"", "", ""};
-        ArrayList<String[]> downloadResponses = new ArrayList<String[]>();
-
-        for (String response : responses) {
-
-            splitDownloadResponse = response.split("\\s+");
-            switch (splitDownloadResponse[0]) {
-
-                case "1":
-                    System.out.println("Client " + clientId + " accepted download request from " + splitDownloadResponse[1] +
-                            "for the photo" + splitDownloadResponse[2]);
-                    downloadResponses.add(new String[]{
-                            splitDownloadResponse[1],
-                            "AcceptedDownload " + clientId + " " + splitDownloadResponse[2]
-                    });
-                    break;
-
-                case "2":
-                    //reject
-                    System.out.println("Client " + clientId + " rejected download request from " + splitDownloadResponse[1] +
-                            "for the photo" + splitDownloadResponse[2]);
-                    downloadResponses.add(new String[]{
-                            splitDownloadResponse[1],
-                            "RejectedDownload " + clientId + " " + splitDownloadResponse[2]
-                    });
-                    break;
-
-            }
-        }
-
-        sendDownloadResponse(downloadResponses);
-        responses.clear();
-
-    }
-    if (!commentNotifications.isEmpty()) {
-      sendCommentResponse(commentNotifications);
-    }
-    }
-
     private void sendCommentResponse(ArrayList<String[]> commentResponses) {
-        String pathToWrite = "";
+        String pathToWrite;
         for (String[] responseInfo : commentResponses){
             pathToWrite = "server/directories/directory_" + GroupId + responseInfo[0] + "/notifications.txt";
             lockFile(pathToWrite);
@@ -1120,159 +898,385 @@ public class ClientHandler extends Thread {
 
     private void sendDownloadResponse(ArrayList<String[]> downloadResponses) {
 
-      String pathToWrite = "";
-      for (String[] responseInfo : downloadResponses){
-          pathToWrite = "server/directories/directory_" + GroupId + responseInfo[0] + "/notifications.txt";
-          lockFile(pathToWrite);
-          try (BufferedWriter writer = new BufferedWriter(new FileWriter(pathToWrite, true))) {
-              writer.write(responseInfo[1]);
-              writer.newLine();
-          } catch (IOException e) {
-              System.err.println("Failed to write to " + pathToWrite);
-          }
-          unlockFile(pathToWrite);
-      }
+        String pathToWrite;
+        for (String[] responseInfo : downloadResponses){
+            pathToWrite = "server/directories/directory_" + GroupId + responseInfo[0] + "/notifications.txt";
+            lockFile(pathToWrite);
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(pathToWrite, true))) {
+                writer.write(responseInfo[1]);
+                writer.newLine();
+            } catch (IOException e) {
+                System.err.println("Failed to write to " + pathToWrite);
+            }
+            unlockFile(pathToWrite);
+        }
     }
 
-    // General funtion to handle download from server to client
+    // ---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+    // GENERAL FUNCTIONS -------------------------------------------------------------------------------------------------------------------
+
+    // Sync all files from server to client
+    private void updateClientsDirectoryFiles() throws IOException {
+
+        System.out.println("Synchronizing files with client...");
+
+        File directoryFolder = new File("server/directories/directory_" + GroupId + clientId);
+        File[] files = directoryFolder.listFiles();
+
+        boolean imgTag;
+        String fileName;
+        String descriptionName;
+
+        if (files != null) {
+
+          for (File file : files) {
+            fileName = file.getName();
+            imgTag = fileName.contains(".jpg") || fileName.contains(".png") || fileName.contains(".jpeg") || fileName.contains(".JPG") || fileName.contains(".PNG") || fileName.contains(".JPEG");
+
+            if (imgTag) {
+
+              outStream.writeObject(fileName);
+              descriptionName = fileName.split("//.")[0] + ".txt";
+              downloadSomething(fileName, descriptionName, clientId);
+
+            }
+
+          }
+
+          // Send DONE
+          outStream.writeObject("DONE");
+
+        } else {
+          outStream.writeObject("NotFound");
+        }
+
+    }
+
+    // Sync profile file from server to client
+    private void updateClientProfileFiles() throws IOException{
+        String sourceFile = "server/profiles/Profile_" + GroupId + clientId + ".txt";
+        String content = Files.readString(Paths.get(sourceFile));
+        outStream.writeObject(content);
+        System.out.println("Sending Profile_" + GroupId + clientId + ".txt");
+
+        String sourceFile2 = "server/profiles/Others_" + GroupId + clientId + ".txt";
+        String content2 = Files.readString(Paths.get(sourceFile2));
+        outStream.writeObject(content2);
+        System.out.println("Sending Others_" + GroupId + clientId + ".txt");
+    }
+
+    // Sign out client and terminate everything necessary
+    public void stopClientHandler() {
+
+        try {
+          // Remove client from online clients in Server
+          Server.clientDirectory.remove(clientId);
+          System.out.println("\nOnline clients: ");
+          Server.clientDirectory.forEach((key, value) -> System.out.println(usersLoader.getUserName(key) + " " +  key + " " + value));
+          System.out.println("\n");
+
+          loginFlag = true;
+          menuFlag = true;
+          inStream.close();
+          outStream.close();
+
+          System.out.println("Connection closed");
+
+        } catch (IOException e) {
+          System.out.println(e.getMessage());
+        }
+
+    }
+
+    // Check notifications in notifications.txt after successful login
+    private void checkNotifications() throws IOException, ClassNotFoundException {
+
+        ArrayList<String> followNotifications = new ArrayList<>();
+        ArrayList<String> downloadNotifications = new ArrayList<>();
+        ArrayList<String[]> commentNotifications = new ArrayList<>();
+        String notificationsPath = "server/directories/directory_" + GroupId + clientId + "/notifications.txt";
+
+        lockFile(notificationsPath);
+        try (BufferedReader reader = new BufferedReader(new FileReader(notificationsPath))) {
+
+          String line;
+            String notificationType;
+            String notificationSenderId;
+            String notificationPhotoName;
+            String comment;
+          while ((line = reader.readLine()) != null) {
+            if ( line.trim().isEmpty() ) continue;
+
+            notificationType = line.split("\\s+")[0];
+            notificationSenderId = line.split("\\s+")[1];
+
+              switch (notificationType) {
+                  case "follow" -> followNotifications.add(notificationSenderId);
+                  case "download" -> {
+                      notificationPhotoName = line.split("\\s+")[2];
+                      downloadNotifications.add(notificationSenderId + " " + notificationPhotoName);
+                  }
+                  case "comment" -> {
+                      notificationPhotoName = line.split("\\s+")[2];
+                      comment = line.split("\\s+")[3];
+                      if (Math.random() < 0.5) {
+                          System.out.println("Comment Rejected.");
+                          commentNotifications.add(new String[]{notificationSenderId, "RejectedComment " + notificationPhotoName + " " + clientId + " " + comment});
+                      } else {
+                          System.out.println("Comment Accepted.");
+                          commentNotifications.add(new String[]{notificationSenderId, "AcceptedComment " + notificationPhotoName + " " + clientId + " " + comment});
+                      }
+                  }
+              }
+          }
+
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+        unlockFile(notificationsPath);
+
+        // send notifications to client
+        outStream.writeObject(followNotifications);
+        outStream.writeObject(downloadNotifications);
+        outStream.writeObject(commentNotifications);
+
+        ArrayList<String> responses = new ArrayList<>();
+
+        if (!followNotifications.isEmpty()) {
+
+            for (String notification : followNotifications) {
+                responses.add((String) inStream.readObject());
+            }
+
+            String[] splitResponse;
+            ArrayList<String> acceptFrom = new ArrayList<>();
+            ArrayList<String> sendTo = new ArrayList<>();
+
+            for (String response : responses) {
+
+                splitResponse = response.split("\\s+");
+                switch (splitResponse[0]) {
+
+                    case "1":
+                        System.out.println("Client " + clientId + " accepted follow request from " + splitResponse[1]);
+                        acceptFrom.add(splitResponse[1]);
+                        break;
+
+                    case "2":
+                        //reject
+                        System.out.println("Client " + clientId + " rejected follow request from " + splitResponse[1]);
+                        break;
+
+                    case "3":
+                        System.out.println("Client " + clientId + " accepted and sent back follow request from " + splitResponse[1]);
+                        acceptFrom.add(splitResponse[1]);
+                        sendTo.add(splitResponse[1]);
+                        break;
+                }
+            }
+
+            socialLoader.acceptFollowRequests(clientId, acceptFrom);
+            sendFollowRequests(clientId, sendTo);
+            responses.clear();
+        }
+        if (!downloadNotifications.isEmpty()) {
+
+            for (String notification : downloadNotifications) {
+                responses.add((String) inStream.readObject());
+            }
+
+            String[] splitDownloadResponse;
+            ArrayList<String[]> downloadResponses = new ArrayList<>();
+
+            for (String response : responses) {
+
+                splitDownloadResponse = response.split("\\s+");
+                switch (splitDownloadResponse[0]) {
+
+                    case "1":
+                        System.out.println("Client " + clientId + " accepted download request from " + splitDownloadResponse[1] +
+                                "for the photo" + splitDownloadResponse[2]);
+                        downloadResponses.add(new String[]{
+                                splitDownloadResponse[1],
+                                "AcceptedDownload " + clientId + " " + splitDownloadResponse[2]
+                        });
+                        break;
+
+                    case "2":
+                        //reject
+                        System.out.println("Client " + clientId + " rejected download request from " + splitDownloadResponse[1] +
+                                "for the photo" + splitDownloadResponse[2]);
+                        downloadResponses.add(new String[]{
+                                splitDownloadResponse[1],
+                                "RejectedDownload " + clientId + " " + splitDownloadResponse[2]
+                        });
+                        break;
+
+                }
+            }
+
+            sendDownloadResponse(downloadResponses);
+            responses.clear();
+
+        }
+        if (!commentNotifications.isEmpty()) {
+          sendCommentResponse(commentNotifications);
+        }
+    }
+
+    // General function to handle download from server to client
     private void downloadSomething(String imageName, String descriptionName, String userId) throws IOException {
 
-    // directories
-    String imageDirectory = "server/directories/" + "directory_" + GroupId + userId + "/" + imageName;
-    String descriptionDirectory = "server/directories/" + "directory_" + GroupId + userId + "/" + descriptionName;
+        // Directories
+        String imageDirectory = "server/directories/" + "directory_" + GroupId + userId + "/" + imageName;
+        String descriptionDirectory = "server/directories/" + "directory_" + GroupId + userId + "/" + descriptionName;
 
-    Path imagePath = Paths.get(imageDirectory);
+        Path imagePath = Paths.get(imageDirectory);
 
-    String descriptionLine = "";
-    byte[] descriptionBytes = new byte[0];
-    int descriptionLength = 0;
+        String descriptionLine = "";
+        byte[] descriptionBytes;
+        int descriptionLength;
 
-    byte[] imageBytes = Files.readAllBytes(imagePath);
+        byte[] imageBytes = Files.readAllBytes(imagePath);
 
+        lockFile(descriptionDirectory);
 
-    // try catch to check if bind txt exists
-    try {
-      BufferedReader reader = new BufferedReader(new FileReader(descriptionDirectory));
-      descriptionLine = reader.readLine();
-      reader.close();
-      outStream.writeObject("Selected Picture has bind .txt file.");
+        // try catch to check if bind txt exists
+        try {
+          BufferedReader reader = new BufferedReader(new FileReader(descriptionDirectory));
+          descriptionLine = reader.readLine();
+          reader.close();
+          outStream.writeObject("Selected Picture has bind .txt file.");
 
-    } catch (Exception e) {
+        } catch (Exception e) {
 
-      // 9.g
-      outStream.writeObject("Selected Picture didn't have bind .txt file.");
-    }
+          // 9.g
+          outStream.writeObject("Selected Picture didn't have bind .txt file.");
+        }
 
+        unlockFile(descriptionDirectory);
 
-    descriptionBytes = descriptionLine.getBytes();
-    descriptionLength = descriptionBytes.length;
+        descriptionBytes = descriptionLine.getBytes();
+        descriptionLength = descriptionBytes.length;
 
-    // Combine data
-    byte[] fullData = new byte[1 + descriptionLength + imageBytes.length];
-    fullData[0] = (byte) descriptionLength;
-    System.arraycopy(descriptionBytes, 0, fullData, 1, descriptionLength);
-    System.arraycopy(imageBytes, 0, fullData, 1 + descriptionLength, imageBytes.length);
+        // Combine data
+        byte[] fullData = new byte[1 + descriptionLength + imageBytes.length];
+        fullData[0] = (byte) descriptionLength;
+        System.arraycopy(descriptionBytes, 0, fullData, 1, descriptionLength);
+        System.arraycopy(imageBytes, 0, fullData, 1 + descriptionLength, imageBytes.length);
 
-    // Divide into 10 packets
-    int packetSize = (int) Math.ceil(fullData.length / 10.0);
-    ArrayList<String> receivedAcknowledgements = new ArrayList<String>();
-    boolean ignoreNext = false;
+        // Divide into 10 packets
+        int packetSize = (int) Math.ceil(fullData.length / 10.0);
+        boolean ignoreNext = false;
 
-      stopResending = false;
+          stopResending = false;
 
-      SenderState state = new SenderState();
+          SenderState state = new SenderState(); // Class has the GBN window base & sequence number for the next packet to be sent
 
-      int windowSize = 3;
-      Timer timer = new Timer();
-      Map<Integer, Packet> packetBuffer = new HashMap<>();
-      Set<String> receivedAcks = new HashSet<>();
+          int windowSize = 3;
+          Timer timer = new Timer();
+          Map<Integer, Packet> packetBuffer = new HashMap<>();
+          Set<String> receivedAcks = new HashSet<>();
 
-      while (state.base < 10) {
-          while (state.nextSeqNum < state.base + windowSize && state.nextSeqNum < 10) {
-              int start = state.nextSeqNum * packetSize;
-              int end = Math.min(start + packetSize, fullData.length);
-              byte[] chunk = new byte[end - start];
-              System.arraycopy(fullData, start, chunk, 0, chunk.length);
-              Packet packet = new Packet(state.nextSeqNum, chunk);
+          while (state.base < 10) {
+              while (state.nextSeqNum < state.base + windowSize && state.nextSeqNum < 10) {
+                  int start = state.nextSeqNum * packetSize;
+                  int end = Math.min(start + packetSize, fullData.length);
+                  byte[] chunk = new byte[end - start];
 
-              System.out.println("Sending packet " + state.nextSeqNum);
+                  System.arraycopy(fullData, start, chunk, 0, chunk.length);
+                  Packet packet = new Packet(state.nextSeqNum, chunk);
 
-              outStream.writeObject(packet);
-              outStream.flush();
-              packetBuffer.put(state.nextSeqNum, packet);
+                  System.out.println("Sending packet " + state.nextSeqNum);
 
-              if (state.base == state.nextSeqNum) {
-                  // start timer
-                  startTimer(timer, () -> {
-                      if (stopResending) return;  // Prevent resends after GBN ends
-                      synchronized (state) {
-                          if (state.base >= 10) return; // Make sure you don't resend anything after base becomes 10
-                          resendPackets(state, packetBuffer, outStream);
-                      }
-                  });
-              }
-              state.nextSeqNum++;
-          }
-
-          int originalTimeout = clientSocket.getSoTimeout();
-          try {
-              clientSocket.setSoTimeout(3000);
-              Object ackObj = inStream.readObject();
-              if (ackObj instanceof String ack && ack.startsWith("ACK")) {
-                  int ackNum = Integer.parseInt(ack.substring(3));
-                  System.out.println("Received but not yet accepted: " + ack);
-                  if (!receivedAcks.contains(ack)) {
-                      receivedAcks.add(ack);
-                      System.out.println("Received and ACCEPTED: ACK" + ackNum);
-                  }
-                  if (ackNum == state.base) {
-                      state.base++;
-
-                      while (receivedAcks.contains("ACK" + state.base)) {
-                          state.base++;
-                      }
-
-                      if (state.base == 10) {
-                          timer.cancel();
-                          break;
-                      } else {
-                          timer.cancel();
-                          startTimer(timer, () -> {
-                              if (stopResending) return;  // Prevent resends after GBN ends
-                              synchronized (state) {
-                                  if (state.base >= 10) return; // Make sure you don't resend anything after base becomes 10
-                                  resendPackets(state, packetBuffer, outStream);
-                              }
-                          });                      }
-                  }
-              }
-          } catch (SocketTimeoutException | ClassNotFoundException e) {
-
-              System.out.println("ACK timeout! Resending from packet " + state.base);
-              // Retransmit from base
-              for (int i = state.base; i < state.nextSeqNum; i++) {
-                  Packet resendPacket = packetBuffer.get(i);
-                  outStream.writeObject(resendPacket);
+                  outStream.writeObject(packet);
                   outStream.flush();
-                  System.out.println("Resent packet " + i);
+
+                  packetBuffer.put(state.nextSeqNum, packet); // Link sequence number to packet
+
+                  if (state.base == state.nextSeqNum) {
+                      // Start timer
+                      startTimer(timer, () -> {
+                          if (stopResending) return;  // Prevent resends after GBN ends
+                          synchronized (state) {
+                              if (state.base >= 10) return; // Make sure you don't resend anything after base becomes 10
+                              resendPackets(state, packetBuffer, outStream);
+                          }
+                      });
+                  }
+
+                  state.nextSeqNum++;
               }
-          } finally {
+
+              int originalTimeout = clientSocket.getSoTimeout();
               try {
-                  stopResending = true;
-                  timer.cancel();  // To catch timeout exits or exceptions
-                  timer.purge();
-                  clientSocket.setSoTimeout(originalTimeout); // Restore timeout
-              } catch (SocketException e) {
-                  e.printStackTrace();
+                  clientSocket.setSoTimeout(3000);
+                  Object ackObj = inStream.readObject();
+
+                  if (ackObj instanceof String ack && ack.startsWith("ACK")) {
+                      int ackNum = Integer.parseInt(ack.substring(3));
+                      System.out.println("Received but not yet accepted: " + ack);
+
+                      if (!receivedAcks.contains(ack)) {
+                          receivedAcks.add(ack); // If Server has not received this ACK before add it to receivedAcks
+                          System.out.println("Received and ACCEPTED: ACK" + ackNum);
+                      }
+
+                      if (ackNum == state.base) {
+                          // Increase GBN window
+                          state.base++;
+
+                          while (receivedAcks.contains("ACK" + state.base)) {
+                              state.base++;
+                          }
+
+                          // When base becomes 10, we have sent all packets from 0 to 9
+                          if (state.base == 10) {
+                              timer.cancel();
+                              break;
+                          } else {
+                              timer.cancel();
+                              startTimer(timer, () -> {
+                                  if (stopResending) return;  // Prevent resends after GBN ends
+                                  synchronized (state) {
+                                      if (state.base >= 10) return; // Make sure you don't resend anything after base becomes 10
+                                      resendPackets(state, packetBuffer, outStream);
+                                  }
+                              });                      }
+                      }
+                  }
+
+              } catch (SocketTimeoutException | ClassNotFoundException e) {
+
+                  System.out.println("ACK timeout! Resending from packet " + state.base);
+
+                  // Retransmit from base
+                  for (int i = state.base; i < state.nextSeqNum; i++) {
+                      Packet resendPacket = packetBuffer.get(i);
+                      outStream.writeObject(resendPacket);
+                      outStream.flush();
+                      System.out.println("Resent packet " + i);
+                  }
+              } finally {
+                  try {
+                      stopResending = true;
+                      timer.cancel();  // To catch timeout exits or exceptions
+                      timer.purge();
+                      clientSocket.setSoTimeout(originalTimeout); // Restore timeout
+                  } catch (SocketException e) {
+                      e.printStackTrace();
+                  }
               }
           }
-      }
 
-      System.out.println("--------------------------------------------------Done-----------------------------------------------------");
-      outStream.writeObject("Transmission Complete");
-      outStream.flush();
+          System.out.println("--------------------------------------------------Done-----------------------------------------------------");
+          outStream.writeObject("Transmission Complete");
+          outStream.flush();
     }
 
+    // Starts timer for timeout
     private void startTimer(Timer timer, Runnable task) {
         timer.cancel();
         timer = new Timer();
@@ -1284,6 +1288,7 @@ public class ClientHandler extends Thread {
         }, 3000);
     }
 
+    // Resends all packets in GBN window
     private void resendPackets(SenderState state, Map<Integer, Packet> packetBuffer, ObjectOutputStream outStream) {
         if (state.base >= state.nextSeqNum ) {
             return; // Don't resend if transmission is already complete
@@ -1291,10 +1296,14 @@ public class ClientHandler extends Thread {
 
         try {
             System.out.println("Timeout! Resending packets from " + state.base + " to " + (state.nextSeqNum - 1));
+
+            // Resending packets that are in GBN window
             for (int i = state.base; i < state.nextSeqNum; i++) {
                 Packet resendPacket = packetBuffer.get(i);
+
                 outStream.writeObject(resendPacket);
                 outStream.flush();
+
                 System.out.println("Resent packet " + i);
             }
         } catch (IOException e) {
@@ -1305,90 +1314,73 @@ public class ClientHandler extends Thread {
     // Locks selected file
     private void lockFile(String filePath) {
 
-    fileLocks.putIfAbsent(filePath, new ReentrantLock());
-    ReentrantLock lock = fileLocks.get(filePath);
+        fileLocks.putIfAbsent(filePath, new ReentrantLock());
+        ReentrantLock lock = fileLocks.get(filePath);
 
-    while (true) {
+        while (true) {
 
-      if (lock.tryLock()) {
-        System.out.println("\nClient " + clientId + ": granted access to " + filePath);
-        break;
+          if (lock.tryLock()) {
+            System.out.println("\nClient " + clientId + ": granted access to " + filePath);
+            break;
 
-      } else {
+          } else {
 
-        System.out.println("\nClient " + clientId + ": Trying to access file: " + filePath + " but is locked. Waiting...");
+            System.out.println("\nClient " + clientId + ": Trying to access file: " + filePath + " but is locked. Waiting...");
 
-        try {
-          Thread.sleep(2000); // 2 Seconds before trying again
+            try {
+              Thread.sleep(2000); // 2 Seconds before trying again
 
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+
+          }
         }
-
-      }
-    }
     }
 
     // Unlocks the selected file
     private void unlockFile(String filePath) {
 
-    ReentrantLock lock = fileLocks.get(filePath);
+        ReentrantLock lock = fileLocks.get(filePath);
 
-    // Check if the file is locked or already unlocked
-    if (lock != null && lock.isHeldByCurrentThread()) {
-      lock.unlock();
-      System.out.println("File Unlocked: " + filePath + "\n");
-    }
-
-    }
-
-    private void fixNewUserlFiles() throws IOException{
-
-
-    System.out.println("Creating all nessecary user files...");
-    new File("server/directories/directory_" + GroupId + clientId).mkdirs();
-
-    // add user to social graph txt
-    socialLoader.addUser(clientId);
-
-    try {
-
-      File file = new File("server/directories/directory_" + GroupId + clientId + "/notifications.txt");
-      file.createNewFile();
-      System.out.println("File: " + file + " created.");
-
-      File file2 = new File("server/profiles/Profile_" + GroupId + clientId + ".txt");
-      file2.createNewFile();
-      System.out.println("File: " + file2 + " created.");
-
-
-      File file3 = new File("server/profiles/Others_"+ GroupId + clientId + ".txt");
-      file3.createNewFile();
-      System.out.println("File: " + file3 + " created.");
-
-    }catch(Exception e) {
-      e.printStackTrace();
-    }
-
+        // Check if the file is locked or already unlocked
+        if (lock != null && lock.isHeldByCurrentThread()) {
+          lock.unlock();
+          System.out.println("File Unlocked: " + filePath + "\n");
+        }
 
     }
 
-    private void updateClientProfileFiles() throws IOException{
-    String sourceFile = "server/profiles/Profile_" + GroupId + clientId + ".txt";
-    String content = Files.readString(Paths.get(sourceFile));
-    outStream.writeObject(content);
-    System.out.println("Sending Profile_" + GroupId + clientId + ".txt");
+    // Creates necessary files for client after signup
+    private void fixNewUserFiles() throws IOException{
 
-    String sourceFile2 = "server/profiles/Others_" + GroupId + clientId + ".txt";
-    String content2 = Files.readString(Paths.get(sourceFile2));
-    outStream.writeObject(content2);
-    System.out.println("Sending Others_" + GroupId + clientId + ".txt");
+        System.out.println("Creating all necessary user files...");
+        new File("server/directories/directory_" + GroupId + clientId).mkdirs();
+
+        // add user to social graph txt
+        socialLoader.addUser(clientId);
+
+        try {
+
+          File file = new File("server/directories/directory_" + GroupId + clientId + "/notifications.txt");
+          file.createNewFile();
+          System.out.println("File: " + file + " created.");
+
+          File file2 = new File("server/profiles/Profile_" + GroupId + clientId + ".txt");
+          file2.createNewFile();
+          System.out.println("File: " + file2 + " created.");
+
+
+          File file3 = new File("server/profiles/Others_"+ GroupId + clientId + ".txt");
+          file3.createNewFile();
+          System.out.println("File: " + file3 + " created.");
+
+        } catch(Exception e) {
+          e.printStackTrace();
+        }
+
     }
 
   // --------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-
 
 }
